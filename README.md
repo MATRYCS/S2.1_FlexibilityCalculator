@@ -1,9 +1,13 @@
 Flexibility Calculator
 ==============
 
-This tool calculates the flexibility potential of household, building or zone. 
+This tool calculates the flexibility potential of household, building or zone. The parameters used for calculation and program flow is shown in following figure:
+
+![program flow](catalogues-Program_flow.png)
 
 The tool utilize two another tools:
+
+
 
 1. Artificial Load Profile Generator (ALPG) https://github.com/GENETX/alpg, please use modified version that is also updated to be able latest astral package available https://gitlab.comsensus.eu/AndrejCampa/alpg
 2. RC Building Simulator https://github.com/architecture-building-systems/RC_BuildingSimulator, however we recommend slightly modified version that is available at https://gitlab.comsensus.eu/AndrejCampa/rc_buildingsimulator
