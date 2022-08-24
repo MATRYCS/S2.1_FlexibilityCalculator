@@ -54,8 +54,8 @@ consumptionFactor = 1.0  # consumption was a bit too high
 
 # Electric mobility, restriction that the sum <= 100
 # Note, households with larger driving distances will receive EVs first
-penetrationEV = 13
-penetrationPHEV = 32
+penetrationEV = 100
+penetrationPHEV = 0
 
 # we are using PVGIS therefore it needs to be 0
 penetrationPV = 0

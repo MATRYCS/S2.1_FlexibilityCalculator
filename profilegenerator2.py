@@ -359,7 +359,11 @@ while len(householdList) > 0:
 
     hnum = hnum + 1
 
+######################
+# Building el. model #
+######################
 bus_profile = business_building_profile(10000, 50000, office_hours=[9 * 60, 17 * 60], weekend=False)
+
 np.array
 plt.plot(bus_profile)
 plt.ylabel('business building consumption power [W]')
