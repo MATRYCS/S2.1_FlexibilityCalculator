@@ -27,13 +27,17 @@ import matplotlib
 from configLoader import *
 from variables import *
 
-sys.path.insert(0, './alpg')
+# sys.path.insert(0, './alpg')
+sys.path.append('./alpg')
+
 import profilegentools
 import requests
 import json
 
 # from RC_BuildingSimulator.rc_simulator.building_physics import Zone  # Importing Zone Class
-sys.path.insert(0, './RC_BuildingSimulator/rc_simulator')
+# sys.path.insert(0, './RC_BuildingSimulator/rc_simulator')
+sys.path.append('./RC_BuildingSimulator/rc_simulator')
+
 # import building_physics
 from building_physics import *
 from radiation import Location
@@ -139,7 +143,7 @@ PVpower = solar_power_taking_account_temperature(temperature, irradiance, Wp=PV_
 
 # t_m_prev previous temperature used for next time stamp
 # All other data is obtained from PVGIS, irradiance, outside temperature,...!
-def get_building_profile(buildingType, year, t_m_prev):
+def get_building_profile(buildingType, year, t_m_prev, month):
     # Loop through  24*4 (15 min intervals) of the day
     for hour in range(
             24 * 4):  # in this case hour is actualy 15 min interval, therefore calc_sun_position in radiation.py needs to be modified
@@ -151,11 +155,11 @@ def get_building_profile(buildingType, year, t_m_prev):
         # t_out = Zurich.weather_data['drybulb_C'][hour]
         t_out = temperature[hour]
 
-        Altitude, Azimuth = village.calc_sun_position(latitude, longitude, year, hoy=hour)
+        Altitude, Azimuth = village.calc_sun_position(latitude, longitude, year, month, hoy=hour)
 
         SouthWindow.calc_solar_gains(sun_altitude=Altitude, sun_azimuth=Azimuth,
-                                     normal_direct_radiation=direct[hour],
-                                     horizontal_diffuse_radiation=difuse[hour])
+                                      normal_direct_radiation=direct[hour],
+                                      horizontal_diffuse_radiation=difuse[hour])
 
         # we dont have illuminance data
         # SouthWindow.calc_illuminance(sun_altitude=Altitude, sun_azimuth=Azimuth,
@@ -335,7 +339,7 @@ while len(householdList) > 0:
     appliance_gains = globals()['DeviceGain{}'.format(hnum + 1)]  # W per sqm
 
     # get results for 1 day RC-simulator of the building! not same as households!!!!
-    dailyResults = get_building_profile(house, year=2015, t_m_prev=21)
+    dailyResults = get_building_profile(house, year=2015, month = m, t_m_prev=21)
 
     # Plotting 
     # dailyResults[['HeatingEnergy', 'CoolingEnergy']].plot()
