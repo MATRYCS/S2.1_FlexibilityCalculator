@@ -26,12 +26,12 @@ outputFolder = cfgOutputDir
 cfgFile = 'houses_matrycs'
 
 #Parse arguments
-opts, args = getopt.getopt(sys.argv[1:],"c:o:f",["config=","output=", "force"])
-for opt, arg in opts:
-    if opt in ("-c", "--config"):
-        cfgFile = arg
-    elif opt in ("-o", "--output"):
-        cfgOutputDir = 'output/'+arg+'/'
+# opts, args = getopt.getopt(sys.argv[1:],"c:o:f",["config=","output=", "force"])
+# for opt, arg in opts:
+#     if opt in ("-c", "--config"):
+#         cfgFile = arg
+#     elif opt in ("-o", "--output"):
+#         cfgOutputDir = 'output/'+arg+'/'
 
 outputFolder = cfgOutputDir        
 sys.path.insert(0, 'configs')

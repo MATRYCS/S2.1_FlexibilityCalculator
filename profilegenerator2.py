@@ -98,10 +98,6 @@ def getPVprofile(m=6, latitude=46.056946, longitude=14.505751, surface_tilt=35, 
     data = data.interpolate()
     data = data.fillna(method='ffill')
 
-    # self.temperature = data["T2m"]
-    # self.irradiance = data["G(i)"]  #global irradiance on a fixed plane
-    # self.direct = data["Gb(i)"]     #Direct irradiance on a fixed plane
-    # self.difuse = data["Gd(i)"]     #diffuse irradiance on a fixed plane
     return data
 
 
