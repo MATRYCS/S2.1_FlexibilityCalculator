@@ -46,6 +46,29 @@ from radiation import Window
 matplotlib.style.use('ggplot')
 
 
+# we use default COP curve from here as reference
+# https://tisto.eu/images/thumbnails/1376/1126/detailed/5/toplotna-crpalka-zrak-voda-18-6-kw-monoblok-400-v-25-c-r407c-5025-tisto.png
+# this curve can be shifted up and down, we use the 55 degrees curve
+def HVAC_COP(temp, shift_COP_number=0.0):
+    # fitted curve to third order polynom
+    Heat_COP = shift_COP_number + 2.6288 + 5.458e-2*temp - 2.705e-4*temp**2 + 3.795e-5*temp**3
+    # only electric heater is on!
+    if Heat_COP<1.0:
+        Heat_COP = 1.0
+    return Heat_COP
+
+# COP for cooling
+# https://www.researchgate.net/figure/Thermal-performance-curve-of-the-normal-air-conditioner_fig2_266975980
+def airconditioner_COP(Tamb,Temp,shift_COP_number=0.0):
+    if Tamb<Temp:
+        Cool_COP = shift_COP_number + 5.7915 - 0.2811 * (Temp-Tamb)
+    else:
+        Cool_COP = np.nan
+    if Cool_COP<1:
+        Cool_COP=1.0
+    return Cool_COP
+
+
 # business building
 # need to generate statistically consumption
 
