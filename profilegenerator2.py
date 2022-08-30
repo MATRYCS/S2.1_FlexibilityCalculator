@@ -45,6 +45,10 @@ from radiation import Window
 
 matplotlib.style.use('ggplot')
 
+diro = 'output'
+for f in os.listdir(diro):
+    os.remove(os.path.join(diro, f))
+    # print(f)
 
 # business building
 # need to generate statistically consumption
@@ -134,6 +138,7 @@ def solar_power_taking_account_temperature(temperature, irradiance, Wp=5000, sys
 
 # Calculate the actual PV power based on irradiance on the Plane of array (POA)
 PVpower = solar_power_taking_account_temperature(temperature, irradiance, Wp=PV_nominal_power)
+PVpower = [i for i in PVpower] #make list without timestamps
 
 
 #############################
@@ -143,7 +148,7 @@ PVpower = solar_power_taking_account_temperature(temperature, irradiance, Wp=PV_
 
 # t_m_prev previous temperature used for next time stamp
 # All other data is obtained from PVGIS, irradiance, outside temperature,...!
-def get_building_profile(buildingType, year, t_m_prev, month):
+def get_building_profile(buildingType, year, month, t_m_prev):
     # Loop through  24*4 (15 min intervals) of the day
     for hour in range(
             24 * 4):  # in this case hour is actualy 15 min interval, therefore calc_sun_position in radiation.py needs to be modified
@@ -246,35 +251,12 @@ numOfHouseholds = len(householdList)
 ########################################
 # Initialise an instance of the Zone. Empty spaces take on the default
 # parameters. See ZonePhysics.py to see the default values
-office = Zone(window_area=4.0,
-              walls_area=11.0,
-              floor_area=35.0,
-              room_vol=105,
-              total_internal_area=142.0,
-              lighting_load=11.7,
-              lighting_control=300.0,
-              lighting_utilisation_factor=0.45,
-              lighting_maintenance_factor=0.9,
-              u_walls=0.2,
-              u_windows=1.1,
-              ach_vent=1.5,
-              ach_infl=0.5,
-              ventilation_efficiency=0.6,
-              thermal_capacitance_per_floor_area=165000,
-              t_set_heating=20.0,
-              t_set_cooling=25.0,
-              max_cooling_energy_per_floor_area=-np.inf,
-              max_heating_energy_per_floor_area=np.inf,
-              heating_supply_system=supply_system.OilBoilerMed,
-              cooling_supply_system=supply_system.HeatPumpAir,
-              heating_emission_system=emission_system.NewRadiators,
-              cooling_emission_system=emission_system.AirConditioning, )
 
-house = Zone(window_area=15,
+house = Zone(window_area=30,
              walls_area=608,  # 2,8*10*8*2 + 80*2
              floor_area=160.0,
              room_vol=368,  # 2.3*160
-             total_internal_area=1,
+             total_internal_area=150,
              lighting_load=11.7,
              lighting_control=300.0,
              lighting_utilisation_factor=0.45,
@@ -283,7 +265,7 @@ house = Zone(window_area=15,
              u_windows=1,
              ach_vent=1.5,
              ach_infl=0.5,
-             ventilation_efficiency=0.6,
+             ventilation_efficiency=0.8,
              thermal_capacitance_per_floor_area=165000,
              # Very light: 80 000 Light: 110 000 Medium: 165 000 Heavy: 260 000 Very heavy:370 000
              t_set_heating=20.0,
@@ -297,77 +279,91 @@ house = Zone(window_area=15,
 
 # Define Windows
 SouthWindow = Window(azimuth_tilt=0, alititude_tilt=90, glass_solar_transmittance=0.7,
-                     glass_light_transmittance=0.8, area=4)
+                     glass_light_transmittance=0.8, area=10)
 
-# A catch statement to prevent future coding bugs when modifying window area
-if SouthWindow.area != office.window_area:
-    raise ValueError('Window area defined in radiation file doesnt match area defined in zone')
 
 village = Location('houses')
 
-# iterate through alpg houses
-while len(householdList) > 0:
-    print("Household " + str(hnum + 1) + " of " + str(numOfHouseholds), flush=True)
-    # print(householdList[0])
-    householdList[0].simulate()
+# original script iterates through alpg houses here, we only take 1 representative house
 
-    # Warning: On my PC the random number is still the same at this point, but after calling scaleProfile() it isn't!!!
-    householdList[0].scaleProfile()
-    householdList[0].reactivePowerProfile()
-    householdList[0].thermalGainProfile()
+print("Household " + str(hnum + 1) + " of " + str(numOfHouseholds), flush=True)
+householdList[0].simulate()
 
-    config.writer.writeHousehold(householdList[0], hnum)
-    config.writer.writeNeighbourhood(hnum)
+# Warning: On my PC the random number is still the same at this point, but after calling scaleProfile() it isn't!!!
+householdList[0].scaleProfile()
+householdList[0].reactivePowerProfile()
+householdList[0].thermalGainProfile()
 
-    globals()['DeviceGain{}'.format(hnum + 1)] = householdList[0].HeatGain["DeviceGain"]
-    globals()['PersonGain{}'.format(hnum + 1)] = householdList[0].HeatGain["PersonGain"]
-    globals()['Consumption{}'.format(hnum + 1)] = householdList[0].Consumption["Total"]
+config.writer.writeHousehold(householdList[0], hnum)
+config.writer.writeNeighbourhood(hnum)
 
-    # building
-    # Empty Lists for Storing Data to Plot
-    ElectricityOut = []
-    HeatingDemand = []  # Energy required by the zone
-    HeatingEnergy = []  # Energy required by the supply system to provide HeatingDemand
-    CoolingDemand = []  # Energy surplus of the zone
-    CoolingEnergy = []  # Energy required by the supply system to get rid of CoolingDemand
-    IndoorAir = []
-    OutsideTemp = []
-    SolarGains = []
-    COP = []
+globals()['DeviceGain{}'.format(hnum + 1)] = householdList[0].HeatGain["DeviceGain"]
+globals()['PersonGain{}'.format(hnum + 1)] = householdList[0].HeatGain["PersonGain"]
+globals()['Consumption{}'.format(hnum + 1)] = householdList[0].Consumption["Total"]
 
-    gain_per_person = globals()['PersonGain{}'.format(hnum + 1)]  # W per person
-    appliance_gains = globals()['DeviceGain{}'.format(hnum + 1)]  # W per sqm
+# building
+# Empty Lists for Storing Data to Plot
+ElectricityOut = []
+HeatingDemand = []  # Energy required by the zone
+HeatingEnergy = []  # Energy required by the supply system to provide HeatingDemand
+CoolingDemand = []  # Energy surplus of the zone
+CoolingEnergy = []  # Energy required by the supply system to get rid of CoolingDemand
+IndoorAir = []
+OutsideTemp = []
+SolarGains = []
+COP = []
 
-    # get results for 1 day RC-simulator of the building! not same as households!!!!
-    dailyResults = get_building_profile(house, year=2015, month = m, t_m_prev=21)
+gain_per_person = globals()['PersonGain{}'.format(hnum + 1)]  # W per person
+appliance_gains = globals()['DeviceGain{}'.format(hnum + 1)]  # W per sqm
 
-    # Plotting 
-    # dailyResults[['HeatingEnergy', 'CoolingEnergy']].plot()
-    # plt.show()
+from resample import * #resample the data from minute to 15 interval
+consumption_total_resampled = df_new["agregated"]
 
-    # dailyResults[['HeatingDemand', 'CoolingDemand']].plot()
-    # plt.show()
+# get results for 1 day RC-simulator of the building! not same as households!!!!
+dailyResults = get_building_profile(house, year=2015, month = m, t_m_prev=20)
 
-    # dailyResults[['IndoorAir', 'OutsideTemp']].plot()
-    # plt.show()
+# Plotting 
+# dailyResults[['HeatingEnergy', 'CoolingEnergy']].plot()
+# plt.show()
 
-    householdList[0].Consumption = None
-    householdList[0].Occupancy = None
-    for p in householdList[0].Persons:
-        del (p)
-    del (householdList[0])
+dailyResults[['HeatingDemand', 'CoolingDemand']].plot()
+plt.show()
 
-    hnum = hnum + 1
+dailyResults[['IndoorAir', 'OutsideTemp']].plot()
+plt.show()
+
 
 ######################
 # Building el. model #
 ######################
-bus_profile = business_building_profile(10000, 50000, office_hours=[9 * 60, 17 * 60], weekend=False)
+bus_profile = business_building_profile(1000, 5000, office_hours=[9 * 60, 17 * 60], weekend=False)
 
-np.array
-plt.plot(bus_profile)
-plt.ylabel('business building consumption power [W]')
+# plt.plot(bus_profile)
+# plt.ylabel('business building consumption power [W]')
+# plt.xlabel('time 15min slices')
+# plt.show()
+
+
+######################
+#Electric vehicle
+######################
+from EV import charging_profile
+
+
+######################
+#Plot all profiles
+######################
+plt.plot(charging_profile, label = 'Electric vehicle', color = 'm')
+plt.plot(bus_profile, label = 'business building', color = 'y')
+plt.plot(HeatingDemand, label = 'heating demand', color = 'r')
+plt.plot(CoolingDemand, label = 'cooling demand', color = 'b')
+plt.plot(PVpower, label = 'PV', color = 'g')
+plt.plot(consumption_total_resampled, label = 'Consumption', color = 'k')
+plt.grid()
+plt.legend()
+plt.ylabel('power consumption [W]')
 plt.xlabel('time 15min slices')
 plt.show()
+
 
 print('The End')

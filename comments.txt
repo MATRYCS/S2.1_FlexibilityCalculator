@@ -1,0 +1,12 @@
+variables: do we use timezone anywhere?
+houses matrycs: do we always simulate for only 1 day? yes. do we need to change starting day according to the month? no, only workday or holiday.
+resample: before it was made to be run after the while loop for households, now it should be executed in the while loop /while zbrisi, dodaj resample, potem naredis building profile
+houselholds: is the Consumptions["Total"] also including dishwashers and washing machines? % preveri dishWash power ali energy?
+building physics: they are constantly using power and energy interchangably... which one is the correct one?
+		heating_demand, space heating demand of the building %tega uporabljamo naprej v optimizaciji
+		heating_sys_electricity, heating electricity consumption
+		sys_total_energy, total exergy consumed (electricity + fossils) for heating and cooling
+		heating_energy, total exergy consumed (electricity + fossils) for heating
+		shouldn't heating energy and heating demand be equal when there is no sun irradiation??
+		
+		

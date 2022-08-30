@@ -28,8 +28,8 @@ seed = 42
 
 # Simulation:
 # number of days to simulate and skipping of initial days. Simulation starts at Sunday January 1.
-numDays = 3  # number of days
-startDay = 1  # Initial day
+# numDays = 1  # number of days, will be always 1 in our case
+# startDay = 1  # Initial day #only 1 or 2 (1 weekend-holiday / 2 work day )
 
 # Select the geographic location. Refer to the Astral plugin to see available locations (or give a lon+lat)
 # Use e.g. https://www.latlong.net/
