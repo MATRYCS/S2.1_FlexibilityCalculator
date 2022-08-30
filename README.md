@@ -5,14 +5,18 @@ This tool calculates the flexibility potential of household, building or zone. T
 
 ![program flow](catalogues-Program_flow.png)
 
-The tool utilize two another tools:
+The service uses different calculated consumption and generation curves together with flexible asset settings and windows and creates objective function as shown by following figure:
+![optimization](catalogues-Optimization.png)
 
+The tool utilize two another tools:
 
 
 1. Artificial Load Profile Generator (ALPG) https://github.com/GENETX/alpg, please use modified version that is also updated to be able latest astral package available https://gitlab.comsensus.eu/AndrejCampa/alpg
 2. RC Building Simulator https://github.com/architecture-building-systems/RC_BuildingSimulator, however we recommend slightly modified version that is available at https://gitlab.comsensus.eu/AndrejCampa/rc_buildingsimulator
 
 As such, the tool is free to use and modify under the GPL v3.0 license
+
+
 
 Authors: 
 
