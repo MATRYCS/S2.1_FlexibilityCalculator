@@ -43,8 +43,7 @@ with open(r'output\Dishwasher_Endtimes.txt', "r") as datafile:
         dishWash_num = dishWasher.split(":")[0] #get the number of house the dishwasher belongs to
         dishWash_string = dishWasher.split(":")[1] #get all the ending times as a string of ending times
         dishWash_list = dishWash_string.split(",") #make a list of strings; each string its own ending time
-        dishWash_list2 = [int(x) if int(x) < endTime else endTime for x in dishWash_list] #make sure that you do not go over midnight of last day
-        dishWashEnds = [end-len(dishWasherProfile) for end in dishWash_list2] #subtract len(dishWasherProfile) , because this is the last moment you can start dishwasher
+        dishWashEnds = [int(end)-len(dishWasherProfile) for end in dishWash_list] #subtract len(dishWasherProfile) , because this is the last moment you can start dishwasher
         globals()['dishWasher{}'.format(dishWash_num) + 'end'] = dishWashEnds              
         globals()['dishWasher{}'.format(dishWash_num)] = []
         for i in range(len(globals()['dishWasher{}'.format(dishWash_num) + 'end'])):
@@ -68,8 +67,7 @@ with open(r'output\WashingMachine_Endtimes.txt', "r") as datafile:
         WashingMachine_num = WashingMachine.split(":")[0] 
         WashingMachine_string = WashingMachine.split(":")[1] #get all the ending times as a string of ending times
         WashingMachine_list = WashingMachine_string.split(",") #make a list of strings; each string its own ending time
-        WashingMachine_list2 = [int(x) if int(x) < endTime else endTime for x in WashingMachine_list] #make sure that you do not go over midnight of last day       
-        WashingMachineEnds = [end-len(washMachineProfile) for end in WashingMachine_list2]  #subtract len(WashingMachineProfile) , because this is the last moment you can start washing machine
+        WashingMachineEnds = [int(end)-len(washMachineProfile) for end in WashingMachine_list]  #subtract len(WashingMachineProfile) , because this is the last moment you can start washing machine
         globals()['WashingMachine{}'.format(WashingMachine_num) + 'end'] = WashingMachineEnds
         globals()['WashingMachine{}'.format(WashingMachine_num)] = []
         for i in range(len(globals()['WashingMachine{}'.format(WashingMachine_num) + 'end'])):
@@ -95,9 +93,9 @@ if dishWash == "on":
                 print('adding dishWasher profile to user', user)
                 count = 0
                 for currentP in dishWasherProfile:
-                    # print(currentP,df[str(user)][startT+count-offset])                    
-                    df[str(user)][startT+count-offset] += currentP
-                    # print(startT+count-offset, df[str(user)][startT+count-offset])
+                    if count + startT - offset >= 1440:   #if the index would go over midnight shift it to the start of the day                              
+                        startT -= 1440
+                    df[str(user)][startT+count-offset] += currentP                    
                     count += 1
         except:
             print('user', user, 'does not have dishWasher')
@@ -112,9 +110,9 @@ if washMachine == "on":
                 print('adding WashingMachine profile to user', user)
                 count = 0
                 for currentP in washMachineProfile:
-                    # print(currentP,df[str(user+1)][startT+count-offset])
+                    if count + startT - offset >= 1440:                                       
+                        startT -= 1440
                     df[str(user)][startT+count-offset] += currentP
-                    # print(startT+count-offset, df[str(user+1)][startT+count-offset])
                     count += 1
         except:
             print('user', user, 'does not have WashingMachine')  
