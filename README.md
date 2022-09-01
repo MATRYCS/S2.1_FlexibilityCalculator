@@ -12,7 +12,7 @@ The tool utilize two another tools:
 
 
 1. Artificial Load Profile Generator (ALPG) https://github.com/GENETX/alpg, please use modified version that is also updated to be able latest astral package available https://gitlab.comsensus.eu/AndrejCampa/alpg
-2. RC Building Simulator https://github.com/architecture-building-systems/RC_BuildingSimulator, however we recommend slightly modified version that is available at https://gitlab.comsensus.eu/AndrejCampa/rc_buildingsimulator
+2. ~~RC Building Simulator https://github.com/architecture-building-systems/RC_BuildingSimulator, however we recommend slightly modified version that is available at https://gitlab.comsensus.eu/AndrejCampa/rc_buildingsimulator~~
 
 As such, the tool is free to use and modify under the GPL v3.0 license
 
@@ -51,7 +51,11 @@ TBD
 
 **Profiles**
 
-
+**Version 0.2**
+- Written new building model (provides the power exceed or deficit)
+- Solar gain calculator (use for south windows)
+- Cleaned RC-simulator dependencies in the main program
+- All asset profiles are available
 
 **Version 0.1**
 - Created first profiles using alpg and RC simulator library

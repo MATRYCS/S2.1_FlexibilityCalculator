@@ -11,3 +11,7 @@ tiltPV = 35 #PV modules inclination
 azimuthPV = 0 #- 90° is East, 0° is South and 90° is West.
 numDays = 1  # number of days, will be always 1 in our case
 startDay = 1  # Initial day #only 1 or 2 (1 weekend-holiday / 2 work day )
+
+# Very light: 80 000 Light: 110 000 Medium: 165 000 Heavy: 260 000 Very heavy:370 000
+thermal_capacitance = 165000
+flor_area = 200.0

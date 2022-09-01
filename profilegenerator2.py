@@ -36,12 +36,13 @@ import json
 
 # from RC_BuildingSimulator.rc_simulator.building_physics import Zone  # Importing Zone Class
 # sys.path.insert(0, './RC_BuildingSimulator/rc_simulator')
-sys.path.append('./RC_BuildingSimulator/rc_simulator')
-
-# import building_physics
-from building_physics import *
-from radiation import Location
-from radiation import Window
+# sys.path.append('./RC_BuildingSimulator/rc_simulator')
+#
+# # import building_physics
+# from building_physics import *
+# from radiation import Location
+# from radiation import Window
+from building_model import *
 
 matplotlib.style.use('ggplot')
 
@@ -50,26 +51,28 @@ for f in os.listdir(diro):
     os.remove(os.path.join(diro, f))
     # print(f)
 
+
 # we use default COP curve from here as reference
 # https://tisto.eu/images/thumbnails/1376/1126/detailed/5/toplotna-crpalka-zrak-voda-18-6-kw-monoblok-400-v-25-c-r407c-5025-tisto.png
 # this curve can be shifted up and down, we use the 55 degrees curve
 def HVAC_COP(temp, shift_COP_number=0.0):
     # fitted curve to third order polynom
-    Heat_COP = shift_COP_number + 2.6288 + 5.458e-2*temp - 2.705e-4*temp**2 + 3.795e-5*temp**3
+    Heat_COP = shift_COP_number + 2.6288 + 5.458e-2 * temp - 2.705e-4 * temp ** 2 + 3.795e-5 * temp ** 3
     # only electric heater is on!
-    if Heat_COP<1.0:
+    if Heat_COP < 1.0:
         Heat_COP = 1.0
     return Heat_COP
 
+
 # COP for cooling
 # https://www.researchgate.net/figure/Thermal-performance-curve-of-the-normal-air-conditioner_fig2_266975980
-def airconditioner_COP(Tamb,Temp,shift_COP_number=0.0):
-    if Tamb<Temp:
-        Cool_COP = shift_COP_number + 5.7915 - 0.2811 * (Temp-Tamb)
+def airconditioner_COP(Tamb, Temp, shift_COP_number=0.0):
+    if Tamb < Temp:
+        Cool_COP = shift_COP_number + 5.7915 - 0.2811 * (Temp - Tamb)
     else:
         Cool_COP = np.nan
-    if Cool_COP<1:
-        Cool_COP=1.0
+    if Cool_COP < 1:
+        Cool_COP = 1.0
     return Cool_COP
 
 
@@ -161,7 +164,7 @@ def solar_power_taking_account_temperature(temperature, irradiance, Wp=5000, sys
 
 # Calculate the actual PV power based on irradiance on the Plane of array (POA)
 PVpower = solar_power_taking_account_temperature(temperature, irradiance, Wp=PV_nominal_power)
-PVpower = [i for i in PVpower] #make list without timestamps
+PVpower = [i for i in PVpower]  # make list without timestamps
 
 
 #############################
@@ -171,62 +174,47 @@ PVpower = [i for i in PVpower] #make list without timestamps
 
 # t_m_prev previous temperature used for next time stamp
 # All other data is obtained from PVGIS, irradiance, outside temperature,...!
-def get_building_profile(buildingType, year, month, t_m_prev):
+def get_building_profile(buildingType, month):
     # Loop through  24*4 (15 min intervals) of the day
+    # get sout irradiance
+    south_window_azimuth = 180
+    windows_tilt = 90
+    south_window = getPVprofile(m=month, latitude=latitude, longitude=longitude, surface_tilt=windows_tilt, surface_azimuth=south_window_azimuth)
+    irradiance_south_direct = south_window["Gb(i)"]  # Direct irradiance on a fixed plane
+    irradiance_south_diff = south_window["Gd(i)"]
     for hour in range(
             24 * 4):  # in this case hour is actualy 15 min interval, therefore calc_sun_position in radiation.py needs to be modified
 
         # Gains from occupancy and appliances
-        internal_gains = gain_per_person[hour] + appliance_gains[hour]
+        house.internal_gains = gain_per_person[hour] + appliance_gains[hour]
 
-        # Extract the outdoor temperature in Zurich for that hour
-        # t_out = Zurich.weather_data['drybulb_C'][hour]
+        # Extract the outdoor temperature
         t_out = temperature[hour]
+        # reset solar gains after the reset add as many different windows as needed
+        house.solar_gains = 0.0
+        house.solar_power_gains(window_area = 10*0,
+                                irradiance_dir = irradiance_south_direct[hour],
+                                irradiance_dif = irradiance_south_diff[hour],
+                                month=month,
+                                hour=hour,
+                                tilt=windows_tilt,
+                                azimuth = south_window_azimuth,
+                                transmittance=0.7,
+                                lat=latitude,
+                                lon = longitude
+                                )
+        house.calc_heat_demand(t_out)
 
-        Altitude, Azimuth = village.calc_sun_position(latitude, longitude, year, month, hoy=hour)
-
-        SouthWindow.calc_solar_gains(sun_altitude=Altitude, sun_azimuth=Azimuth,
-                                      normal_direct_radiation=direct[hour],
-                                      horizontal_diffuse_radiation=difuse[hour])
-
-        # we dont have illuminance data
-        # SouthWindow.calc_illuminance(sun_altitude=Altitude, sun_azimuth=Azimuth,
-        #                              normal_direct_illuminance=Zurich.weather_data[
-        #                                  'dirnorillum_lux'][hour],
-        #                              horizontal_diffuse_illuminance=Zurich.weather_data['difhorillum_lux'][hour])
-
-        buildingType.solve_energy(internal_gains=internal_gains,
-                                  solar_gains=SouthWindow.solar_gains,
-                                  t_out=t_out,
-                                  t_m_prev=t_m_prev)
-
-        # Office.solve_lighting(
-        #     illuminance=SouthWindow.transmitted_illuminance, occupancy=occupancy)
-
-        # Set the previous temperature for the next time step
-        t_m_prev = buildingType.t_m_next
-
-        HeatingDemand.append(buildingType.heating_demand)
-        HeatingEnergy.append(buildingType.heating_energy)
-        CoolingDemand.append(buildingType.cooling_demand)
-        CoolingEnergy.append(buildingType.cooling_energy)
-        ElectricityOut.append(buildingType.electricity_out)
-        IndoorAir.append(buildingType.t_air)
+        HeatingDemand.append(house.heat_demand)
         OutsideTemp.append(t_out)
-        SolarGains.append(SouthWindow.solar_gains)
-        COP.append(buildingType.cop)
+        SolarGains.append(house.solar_gains)
 
-    annualResults = pd.DataFrame({
+    Results = pd.DataFrame({
         'HeatingDemand': HeatingDemand,
-        'HeatingEnergy': HeatingEnergy,
-        'CoolingDemand': CoolingDemand,
-        'CoolingEnergy': CoolingEnergy,
-        'IndoorAir': IndoorAir,
         'OutsideTemp': OutsideTemp,
         'SolarGains': SolarGains,
-        'COP': COP
     })
-    return annualResults
+    return Results
 
 
 ################################
@@ -269,44 +257,6 @@ householdList = config.householdList
 print("this is householdlist", householdList)
 numOfHouseholds = len(householdList)
 
-########################################
-#### RC simulator - heating cooling ####
-########################################
-# Initialise an instance of the Zone. Empty spaces take on the default
-# parameters. See ZonePhysics.py to see the default values
-
-house = Zone(window_area=30,
-             walls_area=608,  # 2,8*10*8*2 + 80*2
-             floor_area=160.0,
-             room_vol=368,  # 2.3*160
-             total_internal_area=150,
-             lighting_load=11.7,
-             lighting_control=300.0,
-             lighting_utilisation_factor=0.45,
-             lighting_maintenance_factor=0.9,
-             u_walls=0.2,
-             u_windows=1,
-             ach_vent=1.5,
-             ach_infl=0.5,
-             ventilation_efficiency=0.8,
-             thermal_capacitance_per_floor_area=165000,
-             # Very light: 80 000 Light: 110 000 Medium: 165 000 Heavy: 260 000 Very heavy:370 000
-             t_set_heating=20.0,
-             t_set_cooling=25.0,
-             max_cooling_energy_per_floor_area=-np.inf,
-             max_heating_energy_per_floor_area=np.inf,
-             heating_supply_system=supply_system.OilBoilerMed,
-             cooling_supply_system=supply_system.HeatPumpAir,
-             heating_emission_system=emission_system.NewRadiators,
-             cooling_emission_system=emission_system.AirConditioning, )
-
-# Define Windows
-SouthWindow = Window(azimuth_tilt=0, alititude_tilt=90, glass_solar_transmittance=0.7,
-                     glass_light_transmittance=0.8, area=10)
-
-
-village = Location('houses')
-
 # original script iterates through alpg houses here, we only take 1 representative house
 
 print("Household " + str(hnum + 1) + " of " + str(numOfHouseholds), flush=True)
@@ -339,22 +289,39 @@ COP = []
 gain_per_person = globals()['PersonGain{}'.format(hnum + 1)]  # W per person
 appliance_gains = globals()['DeviceGain{}'.format(hnum + 1)]  # W per sqm
 
-from resample import * #resample the data from minute to 15 interval
+from resample import *  # resample the data from minute to 15 interval
+
 consumption_total_resampled = df_new["agregated"]
 
+########################################
+#### Building model - heating cooling ####
+########################################
+# Initialise an instance of the building
+
+walls_area=500
+house = Building(window_area=20.0,
+                 walls_area=500.0,
+                 floor_area=180.0,
+                 volume_building=414,
+                 U_walls=0.2,
+                 U_windows=1.1,
+                 ach_vent=0.35,
+                 ventilation_efficiency=0.6,
+                 thermal_capacitance_per_floor_area=165000,
+                 t_set=22.0)
+
 # get results for 1 day RC-simulator of the building! not same as households!!!!
-dailyResults = get_building_profile(house, year=2015, month = m, t_m_prev=20)
+dailyResults = get_building_profile(house, month=m)
 
 # Plotting 
 # dailyResults[['HeatingEnergy', 'CoolingEnergy']].plot()
 # plt.show()
 
-dailyResults[['HeatingDemand', 'CoolingDemand']].plot()
+dailyResults[['HeatingDemand']].plot()
 plt.show()
 
-dailyResults[['IndoorAir', 'OutsideTemp']].plot()
+dailyResults[['OutsideTemp']].plot()
 plt.show()
-
 
 ######################
 # Building el. model #
@@ -368,25 +335,48 @@ bus_profile = business_building_profile(1000, 5000, office_hours=[9 * 60, 17 * 6
 
 
 ######################
-#Electric vehicle
+# Electric vehicle
 ######################
-from EV import charging_profile
+from EV import charging_profile, EV_startTimes, EV_endTimes
 
-
 ######################
-#Plot all profiles
+# Plot all profiles
 ######################
-plt.plot(charging_profile, label = 'Electric vehicle', color = 'm')
-plt.plot(bus_profile, label = 'business building', color = 'y')
-plt.plot(HeatingDemand, label = 'heating demand', color = 'r')
-plt.plot(CoolingDemand, label = 'cooling demand', color = 'b')
-plt.plot(PVpower, label = 'PV', color = 'g')
-plt.plot(consumption_total_resampled, label = 'Consumption', color = 'k')
+plt.plot(charging_profile, label='Electric vehicle', color='m')  # Power [W]
+plt.plot(bus_profile, label='business building', color='y')  # Power [W]
+plt.plot(HeatingDemand, label='heating demand', color='r')  # Power [Wh/h]
+plt.plot(CoolingDemand, label='cooling demand', color='b')  # Power [Wh/h]
+plt.plot(PVpower, label='PV', color='g')  # Power [W]
+plt.plot(consumption_total_resampled, label='Consumption', color='k')  # Power [W]
 plt.grid()
 plt.legend()
 plt.ylabel('power consumption [W]')
 plt.xlabel('time 15min slices')
 plt.show()
 
+#################################
+# Times for heating and cooling #
+# if daily cooling and heating is not exceeding the 1 degree of total thermal capacitance, we neglect it!
+# Steps:
+# 1. calculate thermal heat-capacitance of building/house for 1 degree celsius difference
+#################################
+
+energy_limit = thermal_capacitance / (60 * 60) * flor_area  # Wh
+sum_energy_needed = 0
+list_of_times = [0]
+list_of_energies = []
+for hour in range(24 * 4):
+    sum_energy_needed += HeatingDemand[hour] / 4.0 # divided by 4 since we are
+    # operating with energy on timeslice of 15 minutees
+    if sum_energy_needed > energy_limit:
+        sum_energy_needed -= energy_limit  # transfer rest of the energy to next time slice
+        list_of_times.append(hour)
+        list_of_energies.append(energy_limit)
+    elif sum_energy_needed < -energy_limit:
+        sum_energy_needed += energy_limit
+        list_of_times.append(hour)
+        list_of_energies.append(energy_limit)
+list_of_times.append(96)
+list_of_energies.append(sum_energy_needed)
 
 print('The End')
