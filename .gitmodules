@@ -1,7 +1,3 @@
-[submodule "RC_BuildingSimulator"]
-	path = RC_BuildingSimulator
-	url = https://gitlab.comsensus.eu/AndrejCampa/rc_buildingsimulator.git
-	branch = master
 [submodule "alpg"]
 	path = alpg
 	url = https://gitlab.comsensus.eu/AndrejCampa/alpg.git
