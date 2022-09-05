@@ -226,7 +226,6 @@ globals()['Consumption{}'.format(hnum + 1)] = householdList[0].Consumption["Tota
 ElectricityOut = []
 HeatingDemand = []  # Energy required by the zone
 HeatingEnergy = []  # Energy required by the supply system to provide HeatingDemand
-CoolingDemand = []  # Energy surplus of the zone
 CoolingEnergy = []  # Energy required by the supply system to get rid of CoolingDemand
 IndoorAir = []
 OutsideTemp = []
@@ -321,7 +320,6 @@ from EV import charging_profile, EV_startTimes, EV_endTimes
 plt.plot(charging_profile, label='Electric vehicle', color='m')  # Power [W]
 plt.plot(bus_profile, label='business building', color='y')  # Power [W]
 plt.plot(HeatingDemand, label='heating demand', color='r')  # Power [Wh/h]
-plt.plot(CoolingDemand, label='cooling demand', color='b')  # Power [Wh/h]
 plt.plot(PVpower, label='PV', color='g')  # Power [W]
 plt.plot(consumption_total_resampled, label='Consumption', color='k')  # Power [W]
 plt.grid()
