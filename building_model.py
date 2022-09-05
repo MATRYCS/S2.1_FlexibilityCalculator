@@ -54,6 +54,7 @@ class Building(object):
                  ventilation_efficiency=0.6,
                  thermal_capacitance_per_floor_area=165000,
                  t_set=22.0,
+                 latitude=45.0, longitude=14.0,
                  ):
         self.window_area = window_area  # [m2] Window Area
         self.walls_area = walls_area
@@ -70,6 +71,8 @@ class Building(object):
         self.heat_demand = 0.0
         self.angle_incidence = 0.0
         self.transmittance = 1.0
+        self.latitude = latitude
+        self.longitude = longitude
 
     def estimate_parameters(self):
         """
@@ -87,10 +90,9 @@ class Building(object):
         self.floor_area = no_of_floors * a ** 2
         self.volume_building = self.floor_area * 2.3
 
-    def solar_power_gains(self, window_area, irradiance_dir, irradiance_dif, month, hour=0, tilt=90.0, azimuth=0, transmittance=0.7, lat=45.1, lon=14.1):
+    def solar_power_gains(self, window_area, irradiance_dir, irradiance_dif, month, hour=0, tilt=90.0, azimuth=0, transmittance=0.7):
         # need to reset solar gains
-        self.get_angle(month, hour, lat, lon, tilt, azimuth)
-        print(self.angle_incidence)
+        self.get_angle(month, hour, self.latitude, self.longitude, tilt, azimuth)
         self.transmittance_glass(self.angle_incidence)
         self.solar_gains += window_area * (irradiance_dir*self.transmittance + irradiance_dif*(1.0 + math.cos(tilt/180*3.14)) / 2.0) * transmittance
 
