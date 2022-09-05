@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 """
 main program for generating building profiles
 Authors: Andrej Campa, Denis Sodin
@@ -19,7 +18,6 @@ import requests
 
 sys.path.append('./alpg')
 import profilegentools
-
 
 from building_model import *
 
@@ -244,24 +242,22 @@ consumption_total_resampled = df_new["agregated"]
 ###########################################
 # Initialise an instance of the building
 
-walls_area=500
-house = Building(window_area=20.0,
-                 walls_area=500.0,
-                 floor_area=180.0,
-                 volume_building=414,
-                 U_walls=0.2,
-                 U_windows=1.1,
-                 ach_vent=0.35,
-                 ventilation_efficiency=0.6,
-                 thermal_capacitance_per_floor_area=165000,
-                 t_set=22.0,
-                 latitude=latitude,
-                 longitude=longitude)
+house = Building(window_area=variables.windows_area,
+                 walls_area=variables.walls_area,
+                 floor_area=variables.floor_area,
+                 volume_building=variables.volume_building,
+                 U_walls=variables.U_walls,
+                 U_windows=variables.U_windows,
+                 ach_vent=variables.ach_vent,
+                 ventilation_efficiency=variables.ventilation_efficiency,
+                 thermal_capacitance_per_floor_area=variables.thermal_capacitance,
+                 t_set=variables.t_set,
+                 latitude=variables.latitude,
+                 longitude=variables.longitude)
 
 # get sout window irradiance, that is used in the daily loop
-south_window_azimuth =0
-windows_tilt = 90
-south_window = getPVprofile(m=m, surface_tilt=windows_tilt, surface_azimuth=south_window_azimuth)
+
+south_window = getPVprofile(m=m, surface_tilt=variables.windows_tilt, surface_azimuth=variables.south_window_azimuth)
 irradiance_south_direct = south_window["Gb(i)"]  # Direct irradiance on a fixed plane
 irradiance_south_diff = south_window["Gd(i)"]
 
@@ -276,13 +272,13 @@ for hour in range(
     t_out = temperature[hour]
     # reset solar gains after the reset add as many different windows as needed
     house.solar_gains = 0.0
-    house.solar_power_gains(window_area = 10,
+    house.solar_power_gains(window_area = variables.south_window_area,
                             irradiance_dir = irradiance_south_direct[hour],
                             irradiance_dif = irradiance_south_diff[hour],
                             month=m,
                             hour=hour,
-                            tilt=windows_tilt,
-                            azimuth = south_window_azimuth,
+                            tilt=variables.windows_tilt,
+                            azimuth=variables.south_window_azimuth,
                             transmittance=0.7,
                             )
     house.calc_heat_demand(t_out)
@@ -306,8 +302,9 @@ plt.show()
 ###############################
 # Business Building el. model #
 ###############################
-bus_profile = business_building_profile(1000, 5000, office_hours=[9 * 60, 17 * 60], weekend=False)
-
+bus_profile = business_building_profile(variables.background_consumption, variables.peak_consumption,
+                                        office_hours=[variables.office_start_t, variables.office_end_t],
+                                        weekend=variables.weekend)
 
 ######################
 # Electric vehicle
