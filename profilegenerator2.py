@@ -13,7 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 from configLoader import *
-from variables import *
+import variables
 import json
 import requests
 
@@ -152,14 +152,14 @@ def solar_power_taking_account_temperature(temperature, irradiance, Wp=5000, sys
 #############
 
 # get typical irradiance and temperatures for PV and building model
-PVdata = getPVprofile(m=m, latitude=latitude, longitude=longitude, surface_tilt=tiltPV, surface_azimuth=azimuthPV)
+PVdata = getPVprofile(m=variables.m, latitude=variables.latitude, longitude=variables.longitude, surface_tilt=variables.tiltPV, surface_azimuth=variables.azimuthPV)
 temperature = PVdata["T2m"]
 irradiance = PVdata["G(i)"]  # global irradiance on a fixed plane
 direct = PVdata["Gb(i)"]  # Direct irradiance on a fixed plane
 difuse = PVdata["Gd(i)"]  # diffuse irradiance on a fixed plane
 
 # Calculate the actual PV power based on irradiance on the Plane of array (POA)
-PVpower = solar_power_taking_account_temperature(temperature, irradiance, Wp=PV_nominal_power)
+PVpower = solar_power_taking_account_temperature(temperature, irradiance, Wp=variables.PV_nominal_power)
 PVpower = [i for i in PVpower]  # make list without timestamps
 
 
