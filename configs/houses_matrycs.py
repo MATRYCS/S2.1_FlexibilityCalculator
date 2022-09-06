@@ -21,15 +21,14 @@
 
 # Select the output writer
 import writer as writer
-from variables import *
 
 # Random seed
 seed = 42
 
 # Simulation:
 # number of days to simulate and skipping of initial days. Simulation starts at Sunday January 1.
-# numDays = 1  # number of days, will be always 1 in our case
-# startDay = 1  # Initial day #only 1 or 2 (1 weekend-holiday / 2 work day )
+numDays = 1  # number of days, will be always 1 in our case
+startDay = 1  # Initial day #only 1 or 2 (1 weekend-holiday / 2 work day )
 
 # Select the geographic location. Refer to the Astral plugin to see available locations (or give a lon+lat)
 # Use e.g. https://www.latlong.net/
@@ -37,9 +36,9 @@ from astral import location
 
 location = location.Location()  # latest astral library version needs location.Location instead location!!!
 location.solar_depression = 'civil'
-location.latitude = latitude
-location.longitude = longitude
-location.timezone = timezone
+location.latitude = 46.6
+location.longitude = 14.4
+location.timezone = 'Europe/Ljubljana'
 # location.elevation = 300
 
 # Select the devices in the neighbourhood
@@ -69,7 +68,7 @@ penetrationInductioncooking = 25
 
 # Device parameters:
 # EV
-capacityEV = 42000  # Wh
+capacityEV = 420000  # Wh
 powerEV = 7400  # W
 capacityPHEV = 12000  # Wh
 powerPHEV = 3700  # W
