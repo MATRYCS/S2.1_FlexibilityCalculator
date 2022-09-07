@@ -66,7 +66,7 @@ class profilgenerator2(object):
                  peak_consumption = 5000,
                  office_start_t = 9 * 60,  # minutees
                  office_end_t = 17 * 60,
-                 weekend=False, # startday 1-weekend 2-working day
+                 weekend=False, # startday 1-weekend 0-working day
                  bat_capacity = 10000, # Wh
                  bat_power = 3000,  # W charging discarging power
                  bat_efficiency = 0.9,  # return efficiency of the battery
@@ -113,7 +113,8 @@ class profilgenerator2(object):
         self.EV_capacity = EV_capacity  # [Wh]
         self.EV_power = EV_power  # [W] maks charging power
         self.df_new = None
-
+        self.PVpower = None
+        self.PVdata = None
 
 
     # we use default COP (coefficient of performance) curve from here as reference
@@ -429,7 +430,6 @@ class profilgenerator2(object):
         data_len = df.shape[0]
         num = int(data_len / interval)  # number of bins in new file with average power
 
-        new = []
         dic = {}
         aggregated = []
 
@@ -472,15 +472,15 @@ class profilgenerator2(object):
             os.remove(os.path.join(diro, f))
 
         # get typical irradiance and temperatures for PV and building model
-        PVdata = self.getPVprofile(m=self.month, latitude=self.latitude, longitude=self.longitude, surface_tilt=self.tiltPV, surface_azimuth=self.azimuthPV)
-        temperature = PVdata["T2m"]
-        irradiance = PVdata["G(i)"]  # global irradiance on a fixed plane
-        direct = PVdata["Gb(i)"]  # Direct irradiance on a fixed plane
-        difuse = PVdata["Gd(i)"]  # diffuse irradiance on a fixed plane
+        self.PVdata = self.getPVprofile(m=self.month, latitude=self.latitude, longitude=self.longitude, surface_tilt=self.tiltPV, surface_azimuth=self.azimuthPV)
+        temperature = self.PVdata["T2m"]
+        irradiance = self.PVdata["G(i)"]  # global irradiance on a fixed plane
+        direct = self.PVdata["Gb(i)"]  # Direct irradiance on a fixed plane
+        difuse = self.PVdata["Gd(i)"]  # diffuse irradiance on a fixed plane
 
         # Calculate the actual PV power based on irradiance on the Plane of array (POA)
         PVpower = self.solar_power_taking_account_temperature(temperature, irradiance, Wp=self.PV_nominal_power)
-        PVpower = [i for i in PVpower]  # make list without timestamps
+        self.PVpower = [i for i in PVpower]  # make list without timestamps
 
 
 
@@ -488,8 +488,8 @@ class profilgenerator2(object):
         #### Load profile generator ####
         ################################
 
-
         config = importlib.import_module(cfgFile)
+        # config = importlib.reload(config)
         #config.capacityEV=65000
         print(config.capacityEV)
         print('Loading config: ' + cfgFile, flush=True)
@@ -542,12 +542,12 @@ class profilgenerator2(object):
         # building
         # Empty Lists for Storing Data to Plot
         ElectricityOut = []
-        HeatingDemand = []  # Energy required by the zone
+        self.HeatingDemand = []  # Energy required by the zone
         HeatingEnergy = []  # Energy required by the supply system to provide HeatingDemand
         CoolingEnergy = []  # Energy required by the supply system to get rid of CoolingDemand
         IndoorAir = []
-        OutsideTemp = []
-        SolarGains = []
+        self.OutsideTemp = []
+        self.SolarGains = []
         COP = []
 
         gain_per_person = globals()['PersonGain{}'.format(hnum + 1)]  # W per person
@@ -556,7 +556,7 @@ class profilgenerator2(object):
         self.resample()
         #from resample import *  # resample the data from minute to 15 interval
 
-        consumption_total_resampled = self.df_new["agregated"]
+        self.consumption_total_resampled = self.df_new["agregated"]
 
         ###########################################
         ##### Building model - heating cooling ####
@@ -604,27 +604,21 @@ class profilgenerator2(object):
                                     )
             house.calc_heat_demand(t_out)
 
-            HeatingDemand.append(house.heat_demand)
-            OutsideTemp.append(t_out)
-            SolarGains.append(house.solar_gains)
-
-        dailyResults = pd.DataFrame({
-            'HeatingDemand': HeatingDemand,
-            'OutsideTemp': OutsideTemp,
-            'SolarGains': SolarGains,
-        })
+            self.HeatingDemand.append(house.heat_demand)
+            self.OutsideTemp.append(t_out)
+            self.SolarGains.append(house.solar_gains)
 
         ###############################
         # Business Building el. model #
         ###############################
-        bus_profile = self.business_building_profile(self.background_consumption, self.peak_consumption,
+        self.bus_profile = self.business_building_profile(self.background_consumption, self.peak_consumption,
                                                 office_hours=[self.office_start_t, self.office_end_t],
                                                 weekend=self.weekend)
 
         ######################
         # Electric vehicle
         ######################
-        EV_startTimes, EV_endTimes, charging_profile = self.EVprofile()
+        self.EV_startTimes, self.EV_endTimes, self.charging_profile = self.EVprofile()
 
         #################################
         # Times for heating and cooling #
@@ -638,7 +632,7 @@ class profilgenerator2(object):
         list_of_times = []
         list_of_energies = []
         for hour in range(24 * 4):
-            sum_energy_needed += HeatingDemand[hour] / 4.0 # divided by 4 since we are
+            sum_energy_needed += self.HeatingDemand[hour] / 4.0 # divided by 4 since we are
             # operating with energy on timeslice of 15 minutees
             if sum_energy_needed > energy_limit:
                 sum_energy_needed -= energy_limit  # transfer rest of the energy to next time slice
@@ -650,5 +644,15 @@ class profilgenerator2(object):
                 list_of_energies.append(energy_limit)
         list_of_times.append(96)
         list_of_energies.append(sum_energy_needed)
+        
+        self.dailyResults = pd.DataFrame({
+            'HeatingDemand': self.HeatingDemand,
+            'OutsideTemp': self.OutsideTemp,
+            'SolarGains': self.SolarGains, 
+            'ElectricVehicle': self.charging_profile,
+            'BusinessBuildingProfile': self.bus_profile,
+            'Photovoltaic': self.PVpower,
+            # 'ConsumptionHouse': self.consumption_total_resampled    
+        })
 
         print('The End')
