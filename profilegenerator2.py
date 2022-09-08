@@ -21,20 +21,22 @@ import json
 import requests
 import importlib
 
+import houses_matrycs
+
 sys.path.append('./alpg')
 import profilegentools
+import writer
 
 from building_model import *
 
-import neighbourhood
+#import neighbourhood
+import houses_matrycs
 
 folder = 'output'
 
 cfgOutputDir = 'output'
-outputFolder = cfgOutputDir
 cfgFile = 'houses_matrycs'
 
-outputFolder = cfgOutputDir
 sys.path.insert(0, 'configs')
 
 
@@ -115,7 +117,11 @@ class profilgenerator2(object):
         self.df_new = None
         self.PVpower = None
         self.PVdata = None
-
+        self.EV_startTimes = []
+        self.EV_endTimes = []
+        self.charging_profile = []
+        self.capacityEV = 42000
+        self.powerEV = 7500
 
     # we use default COP (coefficient of performance) curve from here as reference
     # https://tisto.eu/images/thumbnails/1376/1126/detailed/5/toplotna-crpalka-zrak-voda-18-6-kw-monoblok-400-v-25-c-r407c-5025-tisto.png
@@ -232,6 +238,8 @@ class profilgenerator2(object):
         return P
     
     def EVprofile(self):
+        EV_startTimes=[]
+        EV_endTimes=[]
         if self.weekend:
             offset =  24 * 60
         else:
@@ -488,9 +496,13 @@ class profilgenerator2(object):
         #### Load profile generator ####
         ################################
 
-        config = importlib.import_module(cfgFile)
-        # config = importlib.reload(config)
-        #config.capacityEV=65000
+        config = houses_matrycs.House_types()
+        if self.weekend:
+            startDay = 1
+        else:
+            startDay = 2
+        config.startDay=startDay
+        config.calculation()
         print(config.capacityEV)
         print('Loading config: ' + cfgFile, flush=True)
         print("The current config will create and simulate " + str(len(config.householdList)) + " households", flush=True)
@@ -509,12 +521,12 @@ class profilgenerator2(object):
             exit()
 
         # Randomize using the seed
-        random.seed(config.seed)
+        random.seed(42)
 
         # Create empty files
-        config.writer.createEmptyFiles()
+        writer.createEmptyFiles()
 
-        neighbourhood.neighbourhood()
+        #neighbourhood.neighbourhood()
 
         hnum = 0
 
@@ -525,6 +537,10 @@ class profilgenerator2(object):
         # original script iterates through alpg houses here, we only take 1 representative house
 
         print("Household " + str(hnum + 1) + " of " + str(numOfHouseholds), flush=True)
+        householdList[0].hasEV = True
+        householdList[0].Devices['ElectricalVehicle'].BufferCapacity = self.capacityEV
+        householdList[0].Devices['ElectricalVehicle'].Consumption = self.powerEV
+
         householdList[0].simulate()
 
         # Warning: On my PC the random number is still the same at this point, but after calling scaleProfile() it isn't!!!
@@ -532,10 +548,8 @@ class profilgenerator2(object):
         householdList[0].reactivePowerProfile()
         householdList[0].thermalGainProfile()
 
-        config.writer.writeHousehold(householdList[0], hnum)
-        config.writer.writeNeighbourhood(hnum)
+        writer.writeHousehold(householdList[0], hnum)
 
-        globals()['DeviceGain{}'.format(hnum + 1)] = householdList[0].HeatGain["DeviceGain"]
         globals()['PersonGain{}'.format(hnum + 1)] = householdList[0].HeatGain["PersonGain"]
         globals()['Consumption{}'.format(hnum + 1)] = householdList[0].Consumption["Total"]
 
@@ -551,7 +565,6 @@ class profilgenerator2(object):
         COP = []
 
         gain_per_person = globals()['PersonGain{}'.format(hnum + 1)]  # W per person
-        appliance_gains = globals()['DeviceGain{}'.format(hnum + 1)]  # W per sqm
 
         self.resample()
         #from resample import *  # resample the data from minute to 15 interval
@@ -587,7 +600,7 @@ class profilgenerator2(object):
                 24 * 4):  # in this case hour is actualy 15 min interval, therefore calc_sun_position in radiation.py needs to be modified
 
             # Gains from occupancy and appliances
-            house.internal_gains = gain_per_person[hour] + appliance_gains[hour]
+            house.internal_gains = gain_per_person[hour]
 
             # Extract the outdoor temperature
             t_out = temperature[hour]
@@ -652,7 +665,6 @@ class profilgenerator2(object):
             'ElectricVehicle': self.charging_profile,
             'BusinessBuildingProfile': self.bus_profile,
             'Photovoltaic': self.PVpower,
-            # 'ConsumptionHouse': self.consumption_total_resampled    
+            'ConsumptionHouse': self.consumption_total_resampled
         })
 
-        print('The End')

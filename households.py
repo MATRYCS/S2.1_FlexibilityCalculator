@@ -15,16 +15,67 @@
     #You should have received a copy of the GNU General Public License
     #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    
-
-from configLoader import *
-config = importlib.import_module(cfgFile)
-
 import math, copy
 import profilegentools
 import persons
 import devices
 import heatdemand
+import random
+
+numDays = 1
+# PV not needed!
+PVProductionPerYear = 220  # average kWh per m2 solar panel on annual basis
+PVAngleMean = 35  # degrees, 0 is horizontal to earth surface
+PVAngleSigma = 10  # degrees
+PVAzimuthMean = 180  # degrees, 0 is north, 90 is east
+PVAzimuthSigma = 90  # degrees
+PVEfficiencyMin = 15  # % of theoretical max
+PVEfficiencyMax = 20  # % of theoretical max
+
+# Driving distances
+commuteDistanceMean = 25  # km
+commuteDistanceSigma = 10  # km
+
+# Battery
+capacityBatteryLarge = 12000  # Wh
+capacityBatteryMedium = 5000  # Wh
+capacityBatterySmall = 2000  # Wh
+powerBatteryLarge = 3700  # W
+powerBatteryMedium = 3700  # W
+powerBatterySmall = 3700  # W
+
+# Kitchen
+# Consumption of devices
+ConsumptionOven = 2000  # W
+ConsumptionMicroWave = 800  # W
+ConsumptionStoveVentilation = 120  # W #But this is maximum, usually set lower!
+ConsumptionInductionStove = 2200  # W #http://homeguides.sfgate.com/many-watts-induction-stove-85380.html
+
+ConsumptionFridgeBigMin = 80  # W
+ConsumptionFridgeBigMax = 120  # W
+ConsumptionFridgeSmallMin = 50  # W
+ConsumptionFridgeSmallMax = 80  # W
+
+ConsumptionKettle = 2000  # W
+
+# White goods
+ConsumptionIron = 2000  # W
+ConsumptionVacuumcleaner = 1500  # W
+
+# House
+ConsumptionHouseVentilation = 50  # W
+
+# Household randomization
+# all values must be between 0-1000
+familyOutingChanceMin = 10  # percentage
+familyOutingChanceMax = 20  # percentage
+personWeekdayActivityChanceMin = 20  # percentage
+personWeekdayActivityChanceMax = 30  # percentage
+personWeekendActivityChanceMin = 20  # percentage
+personWeekendActivityChanceMax = 30  # percentage
+
+# Scale overall consumption:
+consumptionFactor = 1.0  # consumption was a bit too high
 
 
 class Household:
@@ -34,8 +85,9 @@ class Household:
     #http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
     #http://www.energie-nederland.nl/wp-content/uploads/2013/04/EnergieTrends2014.pdf
     
-    def __init__(self):
+    def __init__(self,startDay=1):
         self.generate()
+        self.startDay = startDay
         
     def generate(self):
         #The Yearly consumption is the normal consumption of domestic appliances as found for years in households. This excludes: 
@@ -44,7 +96,6 @@ class Household:
         
         #According to http://www.energie-nederland.nl/wp-content/uploads/2013/04/EnergieTrends2014.pdf, this is the distribution for devices we are interested in:                    
         self.ConsumptionShare = {    "Electronics"    : profilegentools.gaussMinMax(17,3), \
-                                    "Lighting"        : profilegentools.gaussMinMax(6,2), \
                                     "Standby"        : profilegentools.gaussMinMax(35,6) }
 
 
@@ -119,24 +170,22 @@ class Household:
         
         #devices
         self.Fridges = []
-        self.Devices = {     "Kettle": devices.DeviceKettle(config.ConsumptionKettle),\
-                            "Lighting": devices.DeviceLighting(),\
+        self.Devices = {     "Kettle": devices.DeviceKettle(ConsumptionKettle),\
                             "Electronics": devices.DeviceElectronics(),\
                             "Cooking":    devices.DeviceCooking(),\
-                            "Ventilation": devices.DeviceVentilation(config.ConsumptionHouseVentilation),\
-                            "Ironing": devices.DeviceIroning(config.ConsumptionIron),\
-                            "Vacuumcleaner": devices.DeviceVacuumcleaner(config.ConsumptionVacuumcleaner),\
+                            "Ventilation": devices.DeviceVentilation(ConsumptionHouseVentilation),\
+                            "Ironing": devices.DeviceIroning(ConsumptionIron),\
+                            "Vacuumcleaner": devices.DeviceVacuumcleaner(ConsumptionVacuumcleaner),\
                             "WashingMachine": devices.DeviceWashingMachine(),\
                             "DishwashMachine": devices.DeviceDishwasher(),\
-                            "ElectricalVehicle": devices.DeviceElectricalVehicle(),\
-                            "PVPanel" : devices.DeviceSolarPanel()}
+                            "ElectricalVehicle": devices.DeviceElectricalVehicle()}
 
         self.HeatingDevices = {    "PersonGain": heatdemand.PersonGain(), \
                                 "Thermostat": heatdemand.Thermostat(), \
                                 "VentFlow": heatdemand.Ventilation(), \
                                 "DHWDemand": heatdemand.DHWDemand() }
         
-        self.familyActivites = random.randint(config.familyOutingChanceMin, config.familyOutingChanceMax) / 100
+        self.familyActivites = random.randint(familyOutingChanceMin, familyOutingChanceMax) / 100
     
     def setHouse(self, house):
         self.House = house
@@ -154,7 +203,7 @@ class Household:
         
         for k, v, in self.ConsumptionShare.items():
             sumDevice = sum(self.consumptionFactor[k])
-            multiplier = ((self.ConsumptionShare[k]/100) * (((self.ConsumptionYearly/365) * config.numDays) * 1000) * 60) / sumDevice #joules
+            multiplier = ((self.ConsumptionShare[k]/100) * (((self.ConsumptionYearly/365) * numDays) * 1000) * 60) / sumDevice #joules
             self.Consumption[k] = [x * multiplier for x in self.consumptionFactor[k]]
             
             self.Consumption[k] = [round(x) for x in self.Consumption[k]]
@@ -249,7 +298,7 @@ class Household:
         # print("dishwash = ", self.DishwashMoment)            
     
     def simulate(self):        
-        for day in range(config.startDay, config.numDays+config.startDay):    
+        for day in range(self.startDay, numDays+self.startDay):
             dayOfWeek = day%7
             
             #Select occupancy profiles for each person
@@ -349,7 +398,7 @@ class Household:
                 OtherProfile = [sum(x) for x in zip(OtherProfile, self.Devices["Vacuumcleaner"].simulate(1440, self.OccupancyAdultsDay, len(self.Persons)))]    
                             
             #Smart devices
-            if day-config.startDay < config.numDays:
+            if day-self.startDay < numDays:
                 #Making sure that we dont run out of the simulation time
                 
                 #Whats for EV?                    
@@ -365,7 +414,6 @@ class Household:
                         self.Devices["DishwashMachine"].simulate(1440, day, self.OccupancyAdultsDay, self.DishwashMoment[dayOfWeek])
 
             #Simulate individual devices
-            LightingProfile = self.Devices["Lighting"].simulate(1440, self.OccupancyPersonsDay, 1388534400+(3600*24*day))
             ElectronicsProfile = self.Devices["Electronics"].simulate(1440, self.OccupancyPersonsDay, self.OccupancyPerson)
             InductiveProfile = self.Devices["Ventilation"].simulate(1440, self.HeatingDevices["VentFlow"])
 
@@ -388,24 +436,16 @@ class Household:
             self.Occupancy.extend(self.OccupancyPersonsDay)
 
 
-        #Now simulate the PV Profile
-        if self.House.hasPV:
-            #simulate(startday, timeintervals, pvArea, pvEfficiency, pvAzimuth, pvElevation)
-            self.PVProfile = self.Devices['PVPanel'].simulate(config.startDay, config.numDays*((3600*24)/60), self.House.pvArea, self.House.pvEfficiency, self.House.pvAzimuth, self.House.pvElevation)
-        else:
-            self.PVProfile = [0] * config.numDays * int(24*3600/60)
-
-
     def saveToFile(self, num):
         text = []
-        config.writer.writeHousehold(self, num)
+        writer.writeHousehold(self, num)
         
         
 
 class HouseholdSingleWorker(Household):
     def __init__(self):
         self.generate()
-        self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*config.consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
+        self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
         self.Persons = [ persons.PersonWorker(random.randint(26,65))]
         
@@ -418,12 +458,12 @@ class HouseholdSingleWorker(Household):
         #However 30 is also mentioned: http://www.nederlandheeftwerk.nl/index.php/cms_categorie/58707/bb/1/id/58707
         #Depends also on the region and work in vicinity.
         
-        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(config.commuteDistanceMean, config.commuteDistanceSigma))))    
+        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(commuteDistanceMean, commuteDistanceSigma))))
             
         if(random.randint(1,2) == 1):
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeBigMin,config.ConsumptionFridgeBigMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeBigMin,ConsumptionFridgeBigMax)) ]
         else:
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)) ]
             
         #We synchronize the dishwasher and dryer based on the annual consumption. Furthermore, this also influences the number of washes.        
         self.hasDishwasher = random.randint(0,5) == 0     #20%
@@ -439,7 +479,7 @@ class HouseholdSingleWorker(Household):
 class HouseholdSingleJobless(Household):
     def __init__(self):
         self.generate()
-        self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*config.consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
+        self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
         self.Persons = [ persons.PersonJobless(random.randint(26,65))]
         
@@ -453,9 +493,9 @@ class HouseholdSingleJobless(Household):
         #Depends also on the region and work in vicinity.
         
         if(random.randint(1,2) == 1):
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeBigMin,config.ConsumptionFridgeBigMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeBigMin,ConsumptionFridgeBigMax)) ]
         else:
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)) ]
             
         #We synchronize the dishwasher and dryer based on the annual consumption. Furthermore, this also influences the number of washes.        
         self.hasDishwasher = random.randint(0,5) == 0     #20%
@@ -471,7 +511,7 @@ class HouseholdSingleJobless(Household):
 class HouseholdSingleParttime(Household):
     def __init__(self):
         self.generate()
-        self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*config.consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
+        self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
         self.Persons = [ persons.PersonParttimeWorker(random.randint(26,65))]
         
@@ -485,9 +525,9 @@ class HouseholdSingleParttime(Household):
         #Depends also on the region and work in vicinity.
         
         if(random.randint(1,2) == 1):
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeBigMin,config.ConsumptionFridgeBigMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeBigMin,ConsumptionFridgeBigMax)) ]
         else:
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)) ]
             
         #We synchronize the dishwasher and dryer based on the annual consumption. Furthermore, this also influences the number of washes.        
         self.hasDishwasher = random.randint(0,5) == 0     #20%
@@ -504,7 +544,7 @@ class HouseholdCouple(Household):
     # Select whether the second adult is a fulltime worker (both false), parttime or jobless
     def __init__(self, parttime=False, jobless=False):
         self.generate()
-        self.ConsumptionYearly        = profilegentools.gaussMinMax(3360,700)*config.consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
+        self.ConsumptionYearly        = profilegentools.gaussMinMax(3360,700)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
         assert(parttime == False or jobless == False) # ONLY one van be active
         
@@ -517,12 +557,12 @@ class HouseholdCouple(Household):
             self.Persons = [ persons.PersonWorker(age), persons.PersonWorker(age)]
         
         #To make life easy, only one persons.Person will use the electric vehicle, so only the main persons.Person will receive a driving distance
-        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(config.commuteDistanceMean, config.commuteDistanceSigma))))        
+        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(commuteDistanceMean, commuteDistanceSigma))))
         
         if(random.randint(1,2) == 1):
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeBigMin,config.ConsumptionFridgeBigMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeBigMin,ConsumptionFridgeBigMax)) ]
         else:
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)) ]
             
             
         self.hasDishwasher = random.randint(0,5) < 2     #40%
@@ -541,11 +581,12 @@ class HouseholdDualWorker(HouseholdCouple):
     
 class HouseholdFamilyDualParent(Household):    
     # Select whether the second adult is a fulltime worker (both false), parttime or jobless
-    def __init__(self, parttime=False, jobless=False):
+    def __init__(self, parttime=False, jobless=False, startDay=1):
+        Household.__init__(self, startDay)
         self.generate()
         numKids = round(max(min(4, random.gauss(1.7, 0.4)), 1))    # http://www.cbs.nl/nl-NL/menu/themas/bevolking/faq/specifiek/faq-hoeveel-kinderen.htm
 
-        self.ConsumptionYearly        = profilegentools.gaussMinMax(2010+(700*numKids),500+(numKids*100))*config.consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
+        self.ConsumptionYearly        = profilegentools.gaussMinMax(2010+(700*numKids),500+(numKids*100))*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
         ageParents = random.randint(40,55)
         if parttime == True:
@@ -557,13 +598,13 @@ class HouseholdFamilyDualParent(Household):
             self.Persons.append(copy.deepcopy(self.Persons[0]))  #Make a copy, we expect a household to be rather synchronized!
             
         #To make life easy, only one persons.Person will use the electric vehicle, so only the main persons.Person will receive a driving distance
-        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(config.commuteDistanceMean, config.commuteDistanceSigma))))    
+        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(commuteDistanceMean, commuteDistanceSigma))))
                 
         #now add the kids
         for i in range(0,numKids):
             self.Persons.append(persons.PersonStudent(random.randint(ageParents-3,ageParents+3)-30))
         
-        self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)) ]
+        self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)) ]
         
         self.hasDishwasher = True #random.randint(0,5) < 7 #100%    
         
@@ -585,7 +626,7 @@ class HouseholdFamilySingleParent(Household):
         self.generate()
         numKids = round(max(min(4, random.gauss(1.7, 0.4)), 1))    # http://www.cbs.nl/nl-NL/menu/themas/bevolking/faq/specifiek/faq-hoeveel-kinderen.htm
     
-        self.ConsumptionYearly        = profilegentools.gaussMinMax(3360+(700*numKids),500+(numKids*100))*config.consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
+        self.ConsumptionYearly        = profilegentools.gaussMinMax(3360+(700*numKids),500+(numKids*100))*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
         ageParents = random.randint(40,55)
         if parttime == True:
@@ -597,13 +638,13 @@ class HouseholdFamilySingleParent(Household):
             
         if not jobless:
             #To make life easy, only one persons.Person will use the electric vehicle, so only the main persons.Person will receive a driving distance
-            self.Persons[0].setDistanceToWork(round(max(0, random.gauss(config.commuteDistanceMean, config.commuteDistanceSigma))))    
+            self.Persons[0].setDistanceToWork(round(max(0, random.gauss(commuteDistanceMean, commuteDistanceSigma))))
                 
         #now add the kids
         for i in range(0,numKids):
             self.Persons.append(persons.PersonStudent(random.randint(ageParents-3,ageParents+3)-30))
             
-        self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)) ]
+        self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)) ]
         
         self.hasDishwasher = random.randint(0,5) < 4 #60%
         
@@ -617,15 +658,15 @@ class HouseholdFamilySingleParent(Household):
 class HouseholdDualRetired(Household):    
     def __init__(self):
         self.generate()
-        self.ConsumptionYearly        = profilegentools.gaussMinMax(3360,600)*config.consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
+        self.ConsumptionYearly        = profilegentools.gaussMinMax(3360,600)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
         age = random.triangular(65, 85, 70)
         self.Persons = [ persons.PersonRetired(age), persons.PersonRetired(age)]
         
         if(random.randint(1,2) == 1):
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeBigMin,config.ConsumptionFridgeBigMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeBigMin,ConsumptionFridgeBigMax)) ]
         else:
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)) ]
             
         self.hasDishwasher = random.randint(0,5) < 3 #40%
         
@@ -640,15 +681,15 @@ class HouseholdDualRetired(Household):
 class HouseholdSingleRetired(Household):    
     def __init__(self):
         self.generate()
-        self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*config.consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
+        self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
         age = random.triangular(65, 85, 70)
         self.Persons = [ persons.PersonRetired(age)]
         
         if(random.randint(1,2) == 1):
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeBigMin,config.ConsumptionFridgeBigMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeBigMin,ConsumptionFridgeBigMax)) ]
         else:
-            self.Fridges = [ devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(config.ConsumptionFridgeSmallMin,config.ConsumptionFridgeSmallMax)) ]
+            self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)), devices.DeviceFridge(random.randint(ConsumptionFridgeSmallMin,ConsumptionFridgeSmallMax)) ]
             
         self.hasDishwasher = random.randint(0,5) < 3 #40%
         

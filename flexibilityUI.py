@@ -161,7 +161,7 @@ with tab7:
         # st.line_chart(pd.DataFrame(use_case.charging_profile, columns = ["Electric vehicle"]))
         # # st.line_chart(pd.DataFrame(use_case.bus_profile, columns = ["business building"]))
         # st.line_chart(pd.DataFrame(use_case.HeatingDemand, columns = ["heating demand"]))
-        # st.line_chart(use_case.dailyResults["ConsumptionHouse"])
+        st.line_chart(use_case.dailyResults["ConsumptionHouse"])
         st.line_chart(use_case.dailyResults["HeatingDemand"])
         st.line_chart(use_case.dailyResults["OutsideTemp"])
         st.line_chart(use_case.dailyResults["SolarGains"])
