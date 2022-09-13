@@ -58,7 +58,7 @@ if st.sidebar.checkbox('Battery'):
 st.title("Matrycs - Profile generator")    
     
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Map", "Thermal building profile", "User profile", "Photovoltaic", "Electric vehicle",  "Battery", "Create profiles"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Map", "Thermal building profile", "User profile", "Photovoltaic", "Electric vehicle",  "Battery", "Create profiles",  "Flexibility"])
 with tab1:
     st.map(map_data)
     
@@ -153,10 +153,6 @@ with tab7:
     run_button = st.button('Create load profiles')
     if run_button:
         use_case.calculation()
-        # st.write(profilegenerator2.dailyResults)
-        # st.write(profilegenerator2.PVpower.values.tolist())
-        # st.write(use_case.PVpower)
-        # st.write(use_case.df_new)
         #dates = pd.date_range(pd.Timestamp(2016, 1, 1, 00, 00), pd.Timestamp(2016, 1, 1, 23, 59), freq="15min",
         #                      tz='UTC').strftime("%H:%M")
         dates=np.arange(0, 24, 0.25)
@@ -164,11 +160,19 @@ with tab7:
         use_case.dailyResults.index.names=['Time']
         profil1=alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='green').encode(
             x='Time',
-            y='Photovoltaic'
+            y='Photovoltaic',
         )
         profil2 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='black').encode(
-            x=alt.Y('Time',title="Time [h]"),
-            y=alt.Y('ConsumptionHouse',title="Power[W]")
+            x='Time',
+            y='ConsumptionHouse'
+        )
+        #using one chart just to define legend and axis!!!!
+        settings = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='black').encode(
+            x=alt.X('Time',title="Time [h]"),
+            y=alt.Y('ConsumptionHouse',title="Power[W]"), # we set x and y label only in one chart
+            # by setting colors we can define legend for all profiles
+            color=alt.Color('Color:N', scale=alt.Scale(range=['green', 'black', 'blue', 'dimgray'],
+                                                domain=['PV', 'Consumption house', 'EV/PHEV', 'Commercial building']))
         )
         profil3=alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='blue').encode(
             x='Time',
@@ -178,19 +182,23 @@ with tab7:
             x='Time',
             y='BusinessBuildingProfile'
         )
-        profiles=alt.layer(profil1,profil2,profil3,profil4)
+        profiles=alt.layer(profil1,profil2,profil3,profil4,settings).properties(title='Electric profiles')
         st.altair_chart(profiles.configure_axis().interactive(),use_container_width=True)
-        # st.line_chart(pd.DataFrame(use_case.PVpower, columns = ["PV"]))
-        # st.line_chart(pd.DataFrame(use_case.charging_profile, columns = ["Electric vehicle"]))
-        # # st.line_chart(pd.DataFrame(use_case.bus_profile, columns = ["business building"]))
-        # st.line_chart(pd.DataFrame(use_case.HeatingDemand, columns = ["heating demand"]))
-        st.line_chart(use_case.dailyResults["ConsumptionHouse"])
-        st.line_chart(use_case.dailyResults["HeatingDemand"])
-        st.line_chart(use_case.dailyResults["OutsideTemp"])
-        st.line_chart(use_case.dailyResults["SolarGains"])
-        st.line_chart(use_case.dailyResults["ElectricVehicle"])
-        st.line_chart(use_case.dailyResults["BusinessBuildingProfile"])
-        
-        
-     
 
+        #second graph
+        resize = alt.selection_interval(bind='scales')
+        profil2_1 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='red').encode(
+            x=alt.X('Time', title='Time [h]'),
+            y=alt.Y('HeatingDemand', axis=alt.Axis(title='Power [W]', titleColor='red'))
+        )
+        profil2_2 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='green').encode(
+            x='Time',
+            y=alt.Y('OutsideTemp',axis=alt.Axis(title='Outside temperature [°C]',titleColor='green'))
+        ).add_selection(resize)
+        profiles2 = alt.layer(profil2_1, profil2_2).resolve_scale(y='independent').properties(title='Heating demand')
+        st.altair_chart(profiles2.configure_axis().interactive(), use_container_width=True)
+
+with tab8:
+    run_button2 = st.button('Calculate flexibility potential')
+    if run_button2:
+        pass
