@@ -21,6 +21,7 @@ import json
 import requests
 import importlib
 
+sys.path.append('./configs')
 import houses_matrycs
 
 sys.path.append('./alpg')
@@ -36,8 +37,6 @@ folder = 'output'
 
 cfgOutputDir = 'output'
 cfgFile = 'houses_matrycs'
-
-sys.path.insert(0, 'configs')
 
 
 class profilgenerator2(object):

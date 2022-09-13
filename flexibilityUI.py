@@ -2,7 +2,7 @@
 """
 Created on Wed Aug 31 07:44:06 2022
 
-@author: DSodin
+@author: DSodin, AndrejC
 """
 
 import streamlit as st
@@ -11,6 +11,7 @@ import numpy as np
 import subprocess
 import matplotlib
 import profilegenerator2
+import altair as alt
 
 vehicle = ""
 PV_on = ""
@@ -156,7 +157,29 @@ with tab7:
         # st.write(profilegenerator2.PVpower.values.tolist())
         # st.write(use_case.PVpower)
         # st.write(use_case.df_new)
-        st.line_chart(use_case.dailyResults["Photovoltaic"])
+        #dates = pd.date_range(pd.Timestamp(2016, 1, 1, 00, 00), pd.Timestamp(2016, 1, 1, 23, 59), freq="15min",
+        #                      tz='UTC').strftime("%H:%M")
+        dates=np.arange(0, 24, 0.25)
+        use_case.dailyResults.index=dates
+        use_case.dailyResults.index.names=['Time']
+        profil1=alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='green').encode(
+            x='Time',
+            y='Photovoltaic'
+        )
+        profil2 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='black').encode(
+            x=alt.Y('Time',title="Time [h]"),
+            y=alt.Y('ConsumptionHouse',title="Power[W]")
+        )
+        profil3=alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='blue').encode(
+            x='Time',
+            y='ElectricVehicle'
+        )
+        profil4=alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='dimgray',strokeDash=[15, 15]).encode(
+            x='Time',
+            y='BusinessBuildingProfile'
+        )
+        profiles=alt.layer(profil1,profil2,profil3,profil4)
+        st.altair_chart(profiles.configure_axis().interactive(),use_container_width=True)
         # st.line_chart(pd.DataFrame(use_case.PVpower, columns = ["PV"]))
         # st.line_chart(pd.DataFrame(use_case.charging_profile, columns = ["Electric vehicle"]))
         # # st.line_chart(pd.DataFrame(use_case.bus_profile, columns = ["business building"]))
