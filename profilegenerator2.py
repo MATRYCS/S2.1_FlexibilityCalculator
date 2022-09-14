@@ -119,8 +119,6 @@ class profilgenerator2(object):
         self.EV_startTimes = []
         self.EV_endTimes = []
         self.charging_profile = []
-        self.capacityEV = 42000
-        self.powerEV = 7500
         self.list_of_times_HVAC = []
         self.list_of_energies_HVAC = []
 
@@ -263,8 +261,8 @@ class profilgenerator2(object):
             file = (datafile.read().split())  # read file in 1 list
             for spec in file:
                 specs = spec.split(":")[1]
-                capacity = int(specs.split(",")[0])  # battery capacity
-                charge_power = int(specs.split(",")[1])
+                capacity = float(specs.split(",")[0])  # battery capacity
+                charge_power = float(specs.split(",")[1])
 
         with open(r'output\ElectricVehicle_RequiredCharge.txt', "r") as datafile:
             file = (datafile.read().split())  # read file in 1 list
@@ -273,7 +271,7 @@ class profilgenerator2(object):
                 charge = float(charges.split(",")[0])  # required charge
 
         if len(EV_startTimes) == 0:
-            charging_profile = [0] * 96
+            charging_profile = [0.0] * 96
             print("EV file is empty")
         else:
             for i in range(len(EV_startTimes)):
@@ -283,7 +281,7 @@ class profilgenerator2(object):
                 if starting_charging_moment >= 1440:
                     starting_charging_moment -= 1440
                 starting_charging_moment = round(starting_charging_moment / 15)
-                charging_profile = [0] * 96
+                charging_profile = [0.0] * 96
                 count = 0
                 while charge_time > 0:
                     if starting_charging_moment + count >= 96:  # if you charge over midnight you need to subtract 1 day
@@ -504,7 +502,7 @@ class profilgenerator2(object):
             startDay = 2
         config.startDay=startDay
         config.calculation()
-        print(config.capacityEV)
+        #print(config.EV)
         print('Loading config: ' + cfgFile, flush=True)
         print("The current config will create and simulate " + str(len(config.householdList)) + " households", flush=True)
         print("Results will be written into: " + cfgOutputDir + "\n", flush=True)
@@ -539,8 +537,8 @@ class profilgenerator2(object):
 
         print("Household " + str(hnum + 1) + " of " + str(numOfHouseholds), flush=True)
         householdList[0].hasEV = True
-        householdList[0].Devices['ElectricalVehicle'].BufferCapacity = self.capacityEV
-        householdList[0].Devices['ElectricalVehicle'].Consumption = self.powerEV
+        householdList[0].Devices['ElectricalVehicle'].BufferCapacity = self.EV_capacity #.capacityEV
+        householdList[0].Devices['ElectricalVehicle'].Consumption = self.EV_power #powerEV
 
         householdList[0].simulate()
 

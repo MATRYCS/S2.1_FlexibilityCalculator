@@ -182,8 +182,8 @@ with tab5:
     if EV_on:         
         if vehicle == "Hybrid":
             st.write("**Selected type of vehicle is:**", vehicle)
-            use_case.EV_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=12.0)
-            use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7)
+            use_case.EV_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=12.0)*1000
+            use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7)*1000
         if vehicle == "Electric":
             st.write("**Selected type of vehicle is:**", vehicle)
             st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=42.0)
@@ -210,7 +210,7 @@ with tab7:
         dates=np.arange(0, 24, 0.25)
         use_case.dailyResults.index=dates
         use_case.dailyResults.index.names=['Time']
-        profil1=alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='green').encode(
+        profil1=alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='SpringGreen').encode(
             x='Time',
             y='Photovoltaic',
         )
@@ -223,14 +223,14 @@ with tab7:
             x=alt.X('Time',title="Time [h]"),
             y=alt.Y('ConsumptionHouse',title="Power[W]"), # we set x and y label only in one chart
             # by setting colors we can define legend for all profiles
-            color=alt.Color('Color:N', scale=alt.Scale(range=['green', 'black', 'blue', 'dimgray'],
+            color=alt.Color('Color:N', scale=alt.Scale(range=['SpringGreen', 'black', 'blue', 'brown'],
                                                 domain=['PV', 'Consumption house', 'EV/PHEV', 'Commercial building']))
         )
         profil3=alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='blue').encode(
             x='Time',
             y='ElectricVehicle'
         )
-        profil4=alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='dimgray',strokeDash=[15, 15]).encode(
+        profil4=alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='brown',strokeDash=[15, 15]).encode(
             x='Time',
             y='BusinessBuildingProfile'
         )
