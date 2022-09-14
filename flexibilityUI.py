@@ -37,9 +37,6 @@ map_data = pd.DataFrame(data,columns=["lat","lon"])
 
 st.sidebar.write("Select assets included in profile generation")
 
-if st.sidebar.checkbox('Thermal building profile'):
-    house_on = True
-
 if st.sidebar.checkbox("User profile"):
     com_build_on = True    
     
@@ -58,38 +55,93 @@ if st.sidebar.checkbox('Battery'):
 st.title("Matrycs - Profile generator")    
     
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Map", "Thermal building profile", "User profile", "Photovoltaic", "Electric vehicle",  "Battery", "Create profiles",  "Flexibility"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Map", "Building thermal profile", "User profile", "Photovoltaic", "Electric vehicle",  "Battery", "Create profiles",  "Flexibility"])
 with tab1:
     st.map(map_data)
     
-with tab2:
-    if house_on:      
-        st.write("**Thermal building profile**")
-        heat_types = ["HVAC", "Electric heater", "Other"]
+with tab2:    
+    st.write("**Heating / cooling parameters**")
+    heat_types = ["HVAC", "Electric heater", "Other"]
+    cool_types = ["Air conditioner", "Other"]
+    
+    col1, col2, = st.columns(2)
+    with col1:
         heating_type = st.selectbox("Type of heating", heat_types)
-        cool_types = ["Air conditioner", "Other"]
+    
+    with col2:
         cooling_type = st.selectbox("Type of cooling", cool_types)
-        use_case.heating_type = heat_types.index(heating_type)+1
-        use_case.cooling_type = cool_types.index(cooling_type)+1        
-        use_case.window_area = st.number_input("Window area [m²]", min_value=0, max_value=None, value=20, help = "Area of the Glazed Surface in contact with the outside.")
-        use_case.south_window_area = st.number_input("South window area [m²]", min_value=0, max_value=None, value=10, help = "Area of windows facing the south.")
-        use_case.south_window_azimuth = st.number_input("Azimuth of south windows [°]", min_value=-90, max_value=90, value=0, help = "The azimuth, or orientation, is the angle of the PV modules relative to the direction due South. - 90° is East, 0° is South and 90° is West.")
-        use_case.windows_tilt = st.number_input("Inclination/slope [°]", min_value=0, max_value=90, value=90, help = "Angle of the south windows from the horizontal plane")
-        use_case.floor_area = st.number_input("Floor area [m²]", min_value=0, max_value=None, value=500)
+    
+    use_case.heating_type = heat_types.index(heating_type)+1
+    use_case.cooling_type = cool_types.index(cooling_type)+1
+    st.write("----------------------------------------------------------------------------------")
+    
+    
+    st.write("**Rooms parameters**")
+    room_param = st.radio("Type of known rooms parameters", ["Basic", "Advanced"], help ="When basic option is selected some of the parameters will be automatically generated as typicall values. Choose advanced option if all parameters are known.")
+    col5, col6 = st.columns(2)
+    with col5:
         use_case.walls_area = st.number_input("Walls area [m²]", min_value=0, max_value=None, value=180, help = "Area of all envelope surfaces, including windows in contact with the outside.")
-        use_case.volume_building = st.number_input("Building volume [m³]", min_value=0, max_value=None, value=400)
+    
+    with col6:
         use_case.U_walls =  st.number_input("U value of facade [W/m²K]", min_value=0.0, max_value=None, value=0.2)
-        use_case.U_windows =  st.number_input("U value of glazed surfaces of windows [W/m²K]", min_value=0.0, max_value=None, value=1.1)
-        use_case.ach_vent =  st.number_input("U value of glazed surfaces of windows [W/m²K]", min_value=0.0, max_value=1.0, value=0.35, help = "Fraction of air changed per hour through ventilation, 0.35 means approx. one third of air volume is changed in a hour.")
-        use_case.ventilation_efficiendy = st.number_input("Ventilation efficiency", min_value=0.0, max_value=1.0, value=0.6, help = "The efficiency of the heat recovery system for ventilation. Set to 0 if there is no heat recovery, 1 means heat recovery is 100% effective, no losses from ventilation.")
-        use_case.t_set = st.number_input("Room temperature [°]", min_value = 15, max_value = 30, value = 20, help = "Set the desired room temperature.")
-        thermal_capacitances = [80000, 110000, 165000, 260000, 370000]                                                
-        use_case.thermal_capacitance = st.selectbox("Thermal capacitance [J/m²K]", thermal_capacitances, help = "Thermal capacitance of the room. Very light: 80 000, Light: 110 000,  Medium: 165 000, Heavy: 260 000, Very heavy: 370 000")
-         
-    else:
-        # st.write("Check the house checkbox in order to access its parameters!")
-        st.warning('Thermal building asset is not selected under general parameters! Please check its checkbox in order to access parameters.', icon="⚠️")
+    
+    use_case.t_set = st.number_input("Room temperature [°]", min_value = 15, max_value = 30, value = 20, help = "Set the desired room temperature.")
+      
+    if room_param == "Basic":
+        """
+        Estimate volume of the building and floor area from walls area, if they are not known
+        """
+        # estimate dimension a of the cube from surface area = 6*a^2
+        a = (use_case.walls_area / 6.0) ** 0.5
+        no_of_floors = int(a / 3)
+        if no_of_floors < 1:
+            no_of_floors = 1
+        height_of_building = no_of_floors * 3
+        # find new a
+        a = (-4 * height_of_building + ((4 * height_of_building) ** 2 + 8 * use_case.walls_area) ** 0.5) / 4
+        use_case.floor_area = no_of_floors * a ** 2
+        use_case.volume_building = use_case.floor_area * 2.3
         
+        st.write("Estimated floor area from walls area is:", use_case.floor_area)
+        st.write("Estimated building volume from walls area is:", use_case.volume_building)
+        use_case.ach_vent = 0.35
+        st.write("Fraction of air mass exchanged through ventilation. Currently selected value is:", use_case.ach_vent)
+        use_case.ventilation_efficiendy = 0.6
+        st.write("The efficiency of the heat recovery system for ventilation: 0 if there is no heat recovery, 1 if heat recovery is 100% effective. Currently selected value is:", use_case.ach_vent)
+        use_case.thermal_capacitance = 165000
+        st.write("Thermal capacitance of the room [J/m²K]. Currently selected value is:", use_case.thermal_capacitance)
+        
+    if room_param == "Advanced":
+        use_case.floor_area = st.number_input("Floor area [m²]", min_value=0, max_value=None, value=500)
+        use_case.volume_building = st.number_input("Building volume [m³]", min_value=0, max_value=None, value=400)
+        use_case.ach_vent =  st.number_input("Fraction of air mass exchanged through ventilation", min_value=0.0, max_value=1.0, value=0.35, help = "Fraction of air changed per hour through ventilation, 0.35 means approx. one third of air volume is changed in a hour.")
+        use_case.ventilation_efficiendy = st.number_input("Ventilation efficiency", min_value=0.0, max_value=1.0, value=0.6, help = "The efficiency of the heat recovery system for ventilation. Set to 0 if there is no heat recovery, 1 means heat recovery is 100% effective, no losses from ventilation.")
+        thermal_capacitances = [80000, 110000, 165000, 260000, 370000]                                                
+        use_case.thermal_capacitance = st.selectbox("Thermal capacitance [J/m²K]", thermal_capacitances, help = "Thermal capacitance of the room. Very light: 80 000, Light: 110 000,  Medium: 165 000, Heavy: 260 000, Very heavy: 370 000", index = 2)
+     
+    st.write("----------------------------------------------------------------------------------")
+    st.write("**Windows parameters**")
+    win_param = st.radio("Type of known windows parameters", ["Basic", "Advanced"], help ="When basic option is selected some of the parameters will be automatically generated as typicall values. Choose advanced option if all parameters are known.")
+    col3, col4 = st.columns(2)
+    with col3:
+        use_case.window_area = st.number_input("Window area [m²]", min_value=0, max_value=None, value=20, help = "Area of the Glazed Surface in contact with the outside.")
+         
+    with col4:
+        use_case.U_windows =  st.number_input("U value of glazed surfaces of windows [W/m²K]", min_value=0.0, max_value=None, value=1.1)
+
+    if win_param == "Basic":
+        st.write("Assumed value of south window area is 1/3 of entire window area. Current south window area =", round(use_case.window_area/3, 2),  "[m²].")
+        use_case.south_window_area /= 3
+        use_case.south_window_azimuth = 0
+        st.write("Azimuth of windows is the angle of the windows relative to the direction due South [- 90° is East, 0° is South and 90° is West.]. Currently assumed orientation of windows is:", use_case.south_window_azimuth,"°.")
+        use_case.windows_tilt = 90
+        st.write("Inclination slope is the angle of the windows from the horizontal plane. Currently assumed value is:", use_case.windows_tilt, "°.")
+    
+    if win_param == "Advanced":                  
+        use_case.south_window_area = st.number_input("South window area [m²]", min_value=0, max_value=None, value=10, help = "Area of windows facing the south.")
+        use_case.south_window_azimuth = st.number_input("Azimuth of south windows [°]", min_value=-90, max_value=90, value=0, help = "The azimuth, or orientation, is the angle of the windows relative to the direction due South. - 90° is East, 0° is South and 90° is West.")
+        use_case.windows_tilt = st.number_input("Inclination/slope [°]", min_value=0, max_value=90, value=90, help = "Angle of the south windows from the horizontal plane")
+         
 with tab3:                          
     if com_build_on:
         tab_1, tab_2 = st.tabs(["Private","Commercial"])

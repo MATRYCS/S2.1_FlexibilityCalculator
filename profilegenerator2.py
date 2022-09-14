@@ -522,7 +522,7 @@ class profilgenerator2(object):
             exit()
 
         # Randomize using the seed
-        random.seed(42)
+        # random.seed(42)
 
         # Create empty files
         writer.createEmptyFiles()
