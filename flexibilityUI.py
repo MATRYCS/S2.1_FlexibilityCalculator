@@ -52,10 +52,7 @@ if st.sidebar.checkbox('Electric Vehicle'):
 if st.sidebar.checkbox('Battery'):
     battery_on = True
 
-run_button = st.sidebar.button('Calculate profiles')
-if run_button:
-    use_case.calculation()
-    created_profiles_bool=True
+
 
 st.title("Matrycs - Catalogue service")
     
@@ -206,6 +203,11 @@ with tab6:
         # st.write("Check the battery checkbox in order to access its parameters!")
         st.warning('Battery asset is not selected under general parameters! Please check its checkbox in order to access parameters.', icon="⚠️")
 
+run_button = st.sidebar.button('Calculate profiles')
+if run_button:
+    use_case.calculation()
+    created_profiles_bool = True
+
 with tab7:
     if created_profiles_bool:
         #dates = pd.date_range(pd.Timestamp(2016, 1, 1, 00, 00), pd.Timestamp(2016, 1, 1, 23, 59), freq="15min",
@@ -261,3 +263,4 @@ with tab8:
         st.write(use_case.list_of_energies_HVAC)
     else:
         st.info("Run simulation to get results")
+
