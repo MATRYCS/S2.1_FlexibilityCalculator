@@ -189,7 +189,7 @@ with tab7:
         resize = alt.selection_interval(bind='scales')
         profil2_1 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='red').encode(
             x=alt.X('Time', title='Time [h]'),
-            y=alt.Y('HeatingDemand', axis=alt.Axis(title='Power [W]', titleColor='red'))
+            y=alt.Y('HeatingDemand', axis=alt.Axis(title='Power [W]', titleColor='red', tickCount=4))
         )
         profil2_2 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='green').encode(
             x='Time',
@@ -197,8 +197,10 @@ with tab7:
         ).add_selection(resize)
         profiles2 = alt.layer(profil2_1, profil2_2).resolve_scale(y='independent').properties(title='Heating demand')
         st.altair_chart(profiles2.configure_axis().interactive(), use_container_width=True)
+        st.write(use_case.list_of_times_HVAC)
 
 with tab8:
-    run_button2 = st.button('Calculate flexibility potential')
-    if run_button2:
-        pass
+    #run_button2 = st.button('Calculate flexibility potential')
+    #if run_button2:
+    st.write(use_case.list_of_times_HVAC)
+    st.write(use_case.list_of_energies_HVAC)

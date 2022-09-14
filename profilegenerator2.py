@@ -121,6 +121,8 @@ class profilgenerator2(object):
         self.charging_profile = []
         self.capacityEV = 42000
         self.powerEV = 7500
+        self.list_of_times_HVAC = []
+        self.list_of_energies_HVAC = []
 
     # we use default COP (coefficient of performance) curve from here as reference
     # https://tisto.eu/images/thumbnails/1376/1126/detailed/5/toplotna-crpalka-zrak-voda-18-6-kw-monoblok-400-v-25-c-r407c-5025-tisto.png
@@ -641,22 +643,22 @@ class profilgenerator2(object):
 
         energy_limit = self.thermal_capacitance / (60 * 60) * self.floor_area  # Wh
         sum_energy_needed = 0
-        list_of_times = []
-        list_of_energies = []
+        self.list_of_times_HVAC = []
+        self.list_of_energies_HVAC = []
         for hour in range(24 * 4):
             sum_energy_needed += self.HeatingDemand[hour] / 4.0 # divided by 4 since we are
             # operating with energy on timeslice of 15 minutees
             if sum_energy_needed > energy_limit:
                 sum_energy_needed -= energy_limit  # transfer rest of the energy to next time slice
-                list_of_times.append(hour)
-                list_of_energies.append(energy_limit)
+                self.list_of_times_HVAC.append(hour)
+                self.list_of_energies_HVAC.append(energy_limit)
             elif sum_energy_needed < -energy_limit:
                 sum_energy_needed += energy_limit
-                list_of_times.append(hour)
-                list_of_energies.append(energy_limit)
-        list_of_times.append(96)
-        list_of_energies.append(sum_energy_needed)
-        
+                self.list_of_times_HVAC.append(hour)
+                self.list_of_energies_HVAC.append(energy_limit)
+        self.list_of_times_HVAC.append(96)
+        self.list_of_energies_HVAC.append(sum_energy_needed)
+        print(self.list_of_times_HVAC[0])
         self.dailyResults = pd.DataFrame({
             'HeatingDemand': self.HeatingDemand,
             'OutsideTemp': self.OutsideTemp,
