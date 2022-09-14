@@ -20,6 +20,7 @@ com_build_on = ""
 house_on = ""
 battery_on = ""
 house_family = ""
+created_profiles_bool=False
 
 use_case = profilegenerator2.profilgenerator2()
 
@@ -50,12 +51,16 @@ if st.sidebar.checkbox('Electric Vehicle'):
     
 if st.sidebar.checkbox('Battery'):
     battery_on = True
+
+run_button = st.sidebar.button('Calculate profiles')
+if run_button:
+    use_case.calculation()
+    created_profiles_bool=True
+
+st.title("Matrycs - Catalogue service")
     
 
-st.title("Matrycs - Profile generator")    
-    
-
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Map", "Building thermal profile", "User profile", "Photovoltaic", "Electric vehicle",  "Battery", "Create profiles",  "Flexibility"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["🗺️Map", "📃Building thermal profile", "📃User profile", "📃PV", "📃EV/PHEV",  "📃Battery", "📈Profiles",  "	📊Flexibility"])
 with tab1:
     st.map(map_data)
     
@@ -186,8 +191,8 @@ with tab5:
             use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7)*1000
         if vehicle == "Electric":
             st.write("**Selected type of vehicle is:**", vehicle)
-            st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=42.0)
-            st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=7.4)
+            st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=42.0)*1000
+            st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=7.4)*1000
     else:
         # st.write("Check the electric vehicle checkbox in order to access its parameters!")   
         st.warning('Electric vehicle asset is not selected under general parameters! Please check its checkbox in order to access parameters.', icon="⚠️")
@@ -201,10 +206,8 @@ with tab6:
         # st.write("Check the battery checkbox in order to access its parameters!")
         st.warning('Battery asset is not selected under general parameters! Please check its checkbox in order to access parameters.', icon="⚠️")
 
-with tab7: 
-    run_button = st.button('Create load profiles')
-    if run_button:
-        use_case.calculation()
+with tab7:
+    if created_profiles_bool:
         #dates = pd.date_range(pd.Timestamp(2016, 1, 1, 00, 00), pd.Timestamp(2016, 1, 1, 23, 59), freq="15min",
         #                      tz='UTC').strftime("%H:%M")
         dates=np.arange(0, 24, 0.25)
@@ -249,10 +252,12 @@ with tab7:
         ).add_selection(resize)
         profiles2 = alt.layer(profil2_1, profil2_2).resolve_scale(y='independent').properties(title='Heating demand')
         st.altair_chart(profiles2.configure_axis().interactive(), use_container_width=True)
-        st.write(use_case.list_of_times_HVAC)
+    else:
+        st.info("Run simulation to get results")
 
 with tab8:
-    #run_button2 = st.button('Calculate flexibility potential')
-    #if run_button2:
-    st.write(use_case.list_of_times_HVAC)
-    st.write(use_case.list_of_energies_HVAC)
+    if created_profiles_bool:
+        st.write(use_case.list_of_times_HVAC)
+        st.write(use_case.list_of_energies_HVAC)
+    else:
+        st.info("Run simulation to get results")

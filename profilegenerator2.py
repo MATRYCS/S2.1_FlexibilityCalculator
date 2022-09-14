@@ -538,7 +538,7 @@ class profilgenerator2(object):
         print("Household " + str(hnum + 1) + " of " + str(numOfHouseholds), flush=True)
         householdList[0].hasEV = True
         householdList[0].Devices['ElectricalVehicle'].BufferCapacity = self.EV_capacity #.capacityEV
-        householdList[0].Devices['ElectricalVehicle'].Consumption = self.EV_power #powerEV
+        householdList[0].Devices['ElectricalVehicle'].Consumption = self.EV_power#powerEV
 
         householdList[0].simulate()
 
@@ -563,10 +563,13 @@ class profilgenerator2(object):
         self.SolarGains = []
         COP = []
 
+        #1440 everyminute
         gain_per_person = globals()['PersonGain{}'.format(hnum + 1)]  # W per person
-
+        gain_per_person = np.interp(np.arange(0, len(gain_per_person),15), np.arange(0, len(gain_per_person),1),gain_per_person)
+        #electric appliance gain 40% to heat
+        gain_consumption = globals()['Consumption{}'.format(hnum + 1)]
+        gain_per_person += 0.4*np.interp(np.arange(0, len(gain_consumption),15), np.arange(0, len(gain_consumption),1),gain_consumption)
         self.resample()
-        #from resample import *  # resample the data from minute to 15 interval
 
         self.consumption_total_resampled = self.df_new["agregated"]
 
@@ -600,7 +603,6 @@ class profilgenerator2(object):
 
             # Gains from occupancy and appliances
             house.internal_gains = gain_per_person[hour]
-
             # Extract the outdoor temperature
             t_out = temperature[hour]
             # reset solar gains after the reset add as many different windows as needed
@@ -653,7 +655,7 @@ class profilgenerator2(object):
             elif sum_energy_needed < -energy_limit:
                 sum_energy_needed += energy_limit
                 self.list_of_times_HVAC.append(hour)
-                self.list_of_energies_HVAC.append(energy_limit)
+                self.list_of_energies_HVAC.append(-energy_limit)
         self.list_of_times_HVAC.append(96)
         self.list_of_energies_HVAC.append(sum_energy_needed)
         print(self.list_of_times_HVAC[0])
