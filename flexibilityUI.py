@@ -75,6 +75,19 @@ with tab2:
     
     use_case.heating_type = heat_types.index(heating_type)+1
     use_case.cooling_type = cool_types.index(cooling_type)+1
+
+    col1, col2, = st.columns(2)
+    with col1:
+        heating_el_P = st.number_input("Max electrical power of heating device [W]",
+                            min_value=0, max_value=None, value=3000,
+                            help = "This is the el. power of the device in the case of HVAC, the COP "
+                                   "(Coefficient Of Performance) number will increase the heating power of HVAC")
+
+    with col2:
+        cooling_el_P = st.number_input("Max electrical power of cooling device [W]",
+                            min_value=0, max_value=None, value=2000,
+                            help = "This is the el. power of the device in case of air conditioning, the COP "
+                                   "(Coefficient Of Performance) number will increase the cooling power")
     st.write("----------------------------------------------------------------------------------")
     
     
@@ -82,7 +95,7 @@ with tab2:
     room_param = st.radio("Type of known rooms parameters", ["Basic", "Advanced"], help ="When basic option is selected some of the parameters will be automatically generated as typicall values. Choose advanced option if all parameters are known.")
     col5, col6 = st.columns(2)
     with col5:
-        use_case.walls_area = st.number_input("Walls area [m²]", min_value=0, max_value=None, value=180, help = "Area of all envelope surfaces, including windows in contact with the outside.")
+        use_case.walls_area = st.number_input("Walls area [m²]", min_value=0, max_value=None, value=400, help = "Area of all envelope surfaces, including windows in contact with the outside.")
     
     with col6:
         use_case.U_walls =  st.number_input("U value of facade [W/m²K]", min_value=0.0, max_value=None, value=0.2)
@@ -259,8 +272,135 @@ with tab7:
 
 with tab8:
     if created_profiles_bool:
-        st.write(use_case.list_of_times_HVAC)
-        st.write(use_case.list_of_energies_HVAC)
+        st.write("**Energy needs of the house for a typical day in**", month)
+        el_kWh = np.sum(use_case.consumption_total_resampled)/4000.0
+        HVAC_kWh=0
+        AC_kWh=0
+        for en in use_case.list_of_energies_HVAC:
+            if en>0:
+                HVAC_kWh +=en
+            else:
+                AC_kWh -=en
+        EV_kWh = np.sum(np.abs(use_case.charging_profile))/4000.0
+        st.write("Electrical energy [kWh]", el_kWh)
+        st.write("Heating/cooling energy needed [kWh]", HVAC_kWh,"/",AC_kWh)
+        st.write("EV/PEHV energy needed [kWh]",EV_kWh)
+        EV_start_time= np.rint(use_case.EV_startTimes[0]/15)
+        EV_end_time = np.rint(use_case.EV_endTimes[0]/15)
+        flexibility_EV=(EV_end_time-EV_start_time)/96*EV_kWh
+        #st.write(EV_start_time, EV_end_time)
+        if EV_start_time>95:
+            EV_start_time-=96
+        if EV_end_time>95:
+            EV_end_time-=96
+        st.write(EV_start_time, EV_end_time)
+        st.write("EV flexibility:",flexibility_EV)
+        st.write("**Total Energy needs:**")
+        st.write("Electric [kWh]", el_kWh+HVAC_kWh+EV_kWh)
+
+        st.write("**Total Energy gains:**")
+        st.write("PV [kWh]", np.sum(np.abs(use_case.PVpower)) / 4000.0)
+
+        st.write("**Heating/Cooling:**")
+        #st.write(use_case.list_of_times_HVAC)
+        #st.write(use_case.list_of_energies_HVAC)
+        if (use_case.heating_type==1):
+            HVAC_energies = []
+            for x in range(96):
+                HVAC_energies.append(use_case.HVAC_COP(use_case.OutsideTemp[x])*heating_el_P/4.0)
+
+            #calculating HVAC energies
+            energies_heating=0
+            energies_heating_optimized = 0
+            for i in range(len(use_case.list_of_times_HVAC)):
+                t_start=use_case.list_of_times_HVAC[i-1]
+                t_end=use_case.list_of_times_HVAC[i]
+                if len(use_case.list_of_times_HVAC)==1:
+                    t_end=96
+                    t_start=1
+                delta = t_end - t_start
+                if delta<0:
+                    delta+=96
+                # ordered energies for each timestamp, first calculate default value for time and after that optimal
+                energies_timestamp = np.roll(HVAC_energies,-t_start)[:delta]
+                #not optimized
+                list_en=use_case.list_of_energies_HVAC[i]
+                if list_en<0:
+                    continue
+                for en in energies_timestamp:
+                    if en<=0:
+                        break
+                    elif en<(list_en/4.0):
+                        list_en-=en/4.0
+                        energies_heating+=heating_el_P/4.0
+                    else: #only some leftovers
+                        energies_heating+=(list_en/en)*heating_el_P/4.0
+                        break
+
+                # optimized scenario, since these are monotonic functions we can just reorder the list and operate
+                # with first values
+                energies_timestamp[::-1].sort()
+                list_en=use_case.list_of_energies_HVAC[i]
+                for en in energies_timestamp:
+                    if en<=0:
+                        break
+                    elif en<(list_en/4.0):
+                        list_en-=en/4.0
+                        energies_heating_optimized+=heating_el_P/4.0
+                    else: #only some leftovers
+                        energies_heating_optimized+=(list_en/en)*heating_el_P/4.0
+                        break
+            st.write("HVAC energies:",energies_heating)
+            st.write("HVAC energies optimized:", energies_heating_optimized)
+
+        if (use_case.cooling_type==1):
+            AC_energies = []
+            for x in range(96):
+                AC_energies.append(-use_case.airconditioner_COP(use_case.t_set,use_case.OutsideTemp[x])*cooling_el_P/4.0)
+            #calculating AC energies
+            energies_cooling=0
+            energies_cooling_optimized = 0
+            for i in range(len(use_case.list_of_times_HVAC)):
+                t_start=use_case.list_of_times_HVAC[i-1]
+                t_end=use_case.list_of_times_HVAC[i]
+                if len(use_case.list_of_times_HVAC)==1:
+                    t_end=96
+                    t_start=1
+                delta = t_end - t_start
+                if delta<0:
+                    delta+=96
+                # ordered energies for each timestamp, first calculate default value for time and after that optimal
+                energies_timestamp = np.roll(AC_energies,-t_start)[:delta]
+                #not optimized
+                list_en=use_case.list_of_energies_HVAC[i]
+                if list_en>0:
+                    continue
+                for en in energies_timestamp:
+                    if en>=0:
+                        break
+                    elif en>(list_en/4.0):
+                        list_en-=en/4.0
+                        energies_cooling+=cooling_el_P/4.0
+                    else: #only some leftovers
+                        energies_cooling+=(list_en/en)*cooling_el_P/4.0
+                        break
+
+                # optimized scenario, since these are monotonic functions we can just reorder the list and operate
+                # with first values
+                energies_timestamp.sort()
+                list_en=use_case.list_of_energies_HVAC[i]
+                for en in energies_timestamp:
+                    if en>=0:
+                        break
+                    elif en>(list_en/4.0):
+                        list_en-=en/4.0
+                        energies_cooling_optimized+=cooling_el_P/4.0
+                    else: #only some leftovers
+                        energies_cooling_optimized+=(list_en/en)*cooling_el_P/4.0
+                        break
+
+        st.write("AC energies:",energies_cooling)
+        st.write("AC energies optimized:", energies_cooling_optimized)
     else:
         st.info("Run simulation to get results")
 

@@ -154,7 +154,7 @@ class profilgenerator2(object):
         if Tamb < Temp:
             Cool_COP = shift_COP_number + 5.7915 - 0.2811 * (Temp - Tamb)
         else:
-            Cool_COP = np.nan
+            Cool_COP = shift_COP_number + 5.7915 - 0.2811 * (Temp - Tamb)
         if Cool_COP < 1:
             Cool_COP = 1.0
         return Cool_COP
@@ -404,8 +404,8 @@ class profilgenerator2(object):
                 # print("user =", user)
                 try:
                     for startT in globals()['dishWasher{}'.format(user)]:
-                        print("startT = ", startT)
-                        print('adding dishWasher profile to user', user)
+                        #print("startT = ", startT)
+                        #print('adding dishWasher profile to user', user)
                         count = 0
                         for currentP in dishWasherProfile:
                             if count + startT - offset >= 1440:  # if the index would go over midnight shift it to the start of the day
@@ -421,8 +421,8 @@ class profilgenerator2(object):
             for user in range(df.shape[1]):
                 try:
                     for startT in globals()['WashingMachine{}'.format(user)]:
-                        print("startT = ", startT)
-                        print('adding WashingMachine profile to user', user)
+                        #print("startT = ", startT)
+                        #print('adding WashingMachine profile to user', user)
                         count = 0
                         for currentP in washMachineProfile:
                             if count + startT - offset >= 1440:
@@ -569,6 +569,8 @@ class profilgenerator2(object):
         #electric appliance gain 40% to heat
         gain_consumption = globals()['Consumption{}'.format(hnum + 1)]
         gain_per_person += 0.4*np.interp(np.arange(0, len(gain_consumption),15), np.arange(0, len(gain_consumption),1),gain_consumption)
+        #print("internal gains")
+        #print(np.sum(gain_per_person)/4)
         self.resample()
 
         self.consumption_total_resampled = self.df_new["agregated"]
@@ -656,9 +658,14 @@ class profilgenerator2(object):
                 sum_energy_needed += energy_limit
                 self.list_of_times_HVAC.append(hour)
                 self.list_of_energies_HVAC.append(-energy_limit)
-        self.list_of_times_HVAC.append(96)
-        self.list_of_energies_HVAC.append(sum_energy_needed)
-        print(self.list_of_times_HVAC[0])
+        print(len(self.list_of_energies_HVAC))
+        if ((sum_energy_needed<(0.4*energy_limit))&(len(self.list_of_energies_HVAC))):
+            self.list_of_energies_HVAC[0]+=sum_energy_needed
+        else:
+            self.list_of_times_HVAC.append(96)
+            self.list_of_energies_HVAC.append(sum_energy_needed)
+
+
         self.dailyResults = pd.DataFrame({
             'HeatingDemand': self.HeatingDemand,
             'OutsideTemp': self.OutsideTemp,
