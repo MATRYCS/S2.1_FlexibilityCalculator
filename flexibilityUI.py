@@ -13,13 +13,12 @@ import matplotlib.pyplot as plt
 import profilegenerator2
 import altair as alt
 
-vehicle = ""
-PV_on = ""
-EV_on = ""
-com_build_on = ""
-house_on = ""
-battery_on = ""
-house_family = ""
+PV_on = False
+EV_on = False
+com_build_on = False
+number_of_cars=1
+distance_EV = 0
+battery_on = False
 created_profiles_bool=False
 
 use_case = profilegenerator2.profilgenerator2()
@@ -38,16 +37,15 @@ map_data = pd.DataFrame(data,columns=["lat","lon"])
 
 st.sidebar.write("Select assets included in profile generation")
 
-if st.sidebar.checkbox("User profile"):
-    com_build_on = True    
-    
+b_types = ['private house','commercial building']
+com_build_on = st.sidebar.radio('Type of building', b_types)
+priv_com = b_types.index(com_build_on)
+
 if st.sidebar.checkbox('Photovoltaics'):
     PV_on = True
  
 if st.sidebar.checkbox('Electric Vehicle'):
     EV_on = True
-    EV_names = ["Hybrid", "Electric"]
-    vehicle = st.sidebar.radio('Type of vehicle', EV_names)
     
 if st.sidebar.checkbox('Battery'):
     battery_on = True
@@ -142,7 +140,7 @@ with tab2:
         use_case.window_area = st.number_input("Window area [m²]", min_value=0, max_value=None, value=20, help = "Area of the Glazed Surface in contact with the outside.")
          
     with col4:
-        use_case.U_windows =  st.number_input("U value of glazed surfaces of windows [W/m²K]", min_value=0.0, max_value=None, value=1.1)
+        use_case.U_windows = st.number_input("U value of glazed surfaces of windows [W/m²K]", min_value=0.0, max_value=None, value=1.1)
 
     if win_param == "Basic":
         st.write("Assumed value of south window area is 1/3 of entire window area. Current south window area =", round(use_case.window_area/3, 2),  "[m²].")
@@ -158,31 +156,23 @@ with tab2:
         use_case.windows_tilt = st.number_input("Inclination/slope [°]", min_value=0, max_value=90, value=90, help = "Angle of the south windows from the horizontal plane")
          
 with tab3:                          
-    if com_build_on:
-        tab_1, tab_2 = st.tabs(["Private","Commercial"])
-        with tab_1:
-            if st.checkbox('Include private houses'):
-                house_family = True
-            types_of_family = ["Single worker", "Single jobless", "Single part-time", "Couple", "Dual worker", "Family dual parent", "Family dual worker", "Family single parent", "Dual retired", "Single retired"]
-            type_of_family = st.selectbox("Type of household", types_of_family)
+    if priv_com==0:
+        types_of_family = ["Single worker", "Single jobless", "Single part-time", "Couple", "Dual worker", "Family dual parent", "Family dual worker", "Family single parent", "Dual retired", "Single retired"]
+        type_of_family = st.selectbox("Type of household", types_of_family)
             
-        with tab_2:
-            st.write("**Commercial**")
-            use_case.background_consumption = st.number_input("Background power [W]", min_value=0, max_value=None, value=1000, help = "Consumption of all appliances in the building that can not be turned off [W].")
-            use_case.peak_consumption = st.number_input("Peak power [W]", min_value=0, max_value=None, value=5000, help = "Peak consumption when all employees are present in their workplace [W].")
-            start_hours = [5,6,7,8,9,10,11]
-            end_hours = [13,14,15,16,17,18,19]
-            use_case.office_start_t = st.selectbox("Starting hour of workday", start_hours, index = 4)*60
-            use_case.office_end_t = st.selectbox("Ending hour of workday", end_hours, index = 4)*60
-            # office_hours=[start_workDay * 60, end_workDay * 60]
-            types_of_day = ["Workday","Weekend"]
-            type_of_day = st.selectbox("Weekend or workday", types_of_day)
-            use_case.weekend = types_of_day.index(type_of_day) 
-        
     else:
-        # st.write("Check the commercial building checkbox in order to access its parameters!")
-        st.warning('Commercial building asset is not selected under general parameters! Please check its checkbox in order to access parameters.', icon="⚠️")
-        
+        st.write("**Commercial**")
+        use_case.background_consumption = st.number_input("Background power [W]", min_value=0, max_value=None, value=1000, help = "Consumption of all appliances in the building that can not be turned off [W].")
+        use_case.peak_consumption = st.number_input("Peak power [W]", min_value=0, max_value=None, value=5000, help = "Peak consumption when all employees are present in their workplace [W].")
+        start_hours = [5,6,7,8,9,10,11]
+        end_hours = [13,14,15,16,17,18,19]
+        use_case.office_start_t = st.selectbox("Starting hour of workday", start_hours, index = 4)*60
+        use_case.office_end_t = st.selectbox("Ending hour of workday", end_hours, index = 4)*60
+        # office_hours=[start_workDay * 60, end_workDay * 60]
+        types_of_day = ["Workday","Weekend"]
+        type_of_day = st.selectbox("Weekend or workday", types_of_day)
+        use_case.weekend = types_of_day.index(type_of_day)
+
 with tab4:
     if PV_on:
         st.header("Parameters")
@@ -194,18 +184,15 @@ with tab4:
         st.warning('Photovoltaic asset is not selected under general parameters! Please check its checkbox in order to access parameters.', icon="⚠️")
         
 with tab5: 
-    if EV_on:         
-        if vehicle == "Hybrid":
-            st.write("**Selected type of vehicle is:**", vehicle)
-            use_case.EV_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=12.0)*1000
-            use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7)*1000
-        if vehicle == "Electric":
-            st.write("**Selected type of vehicle is:**", vehicle)
-            st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=42.0)*1000
-            st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=7.4)*1000
+    if priv_com==0:
+        use_case.EV_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=12.0)*1000
+        use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7)*1000
+
     else:
-        # st.write("Check the electric vehicle checkbox in order to access its parameters!")   
-        st.warning('Electric vehicle asset is not selected under general parameters! Please check its checkbox in order to access parameters.', icon="⚠️")
+        number_of_cars = st.number_input("Number of vehicles:", min_value=0, max_value=None, value=1,
+                                               help="Total number of all EV or PHEV vehicles in the fleet.")
+        distance_EV = st.number_input("Average daily distance done by vehicle [km]", min_value=0, max_value=None, value=20,
+                                               help="Average daily distance of the EV or PHEV vehicles, you can estimate the total distance divided by the number of vehicles")
 
 with tab6:
     if battery_on:
@@ -223,8 +210,6 @@ if run_button:
 
 with tab7:
     if created_profiles_bool:
-        #dates = pd.date_range(pd.Timestamp(2016, 1, 1, 00, 00), pd.Timestamp(2016, 1, 1, 23, 59), freq="15min",
-        #                      tz='UTC').strftime("%H:%M")
         dates=np.arange(0, 24, 0.25)
         use_case.dailyResults.index=dates
         use_case.dailyResults.index.names=['Time']
@@ -273,23 +258,33 @@ with tab7:
 with tab8:
     if created_profiles_bool:
         st.write("**Energy needs of the house for a typical day in**", month)
-        el_kWh = np.sum(use_case.consumption_total_resampled)/4000.0
+        if priv_com == 0:
+            el_kWh = np.sum(use_case.consumption_total_resampled)/4000.0
+        else:
+            el_kWh = np.sum(use_case.bus_profile)/4000.0
         HVAC_kWh=0
         AC_kWh=0
         EV_kWh=0
         PV_total=np.sum(np.abs(use_case.PVpower)) / 4000.0
+        if PV_on is False:
+            PV_total = 0
         for en in use_case.list_of_energies_HVAC:
             if en>0:
                 HVAC_kWh +=en
             else:
                 AC_kWh -=en
-        if vehicle:
-            EV_kWh = np.sum(np.abs(use_case.charging_profile))/4000.0
 
+
+        if EV_on:
+            if priv_com == 0:
+                EV_kWh = np.sum(np.abs(use_case.charging_profile))/4000.0
+            else:
+                # No_cars * distance/100km * 16 kWh, 16 kWh per 100km
+                EV_kWh = number_of_cars*(distance_EV/100)*16
         #*********************
         #     plot 1         *
         #*********************
-        labels=['HVAC','Building \n consumption','EV/PHEV']
+        labels=['HVAC','Building\nappliances\nconsumption','EV/PHEV']
 
         sizes=np.array([(HVAC_kWh+AC_kWh)/1000.0,el_kWh,EV_kWh])
         total_en=np.sum(sizes)
@@ -297,13 +292,16 @@ with tab8:
         fig1, ax1 = plt.subplots(1,2,gridspec_kw={'width_ratios': [2, 1]})
         # you have to transform from % to values autopct converts array into %!!!!
         ax1[0].pie(sizes, labels=labels, autopct=lambda sizes: '{:.2f}%({:.2f} kWh)'.format(sizes,(sizes/ 100.0) * total_en),
-                 startangle=180,explode=[0.2,0.1,0.1])
+                 startangle=140,explode=[0.2,0.1,0.1])
         ax1[0].axis('equal')
         labels=["total energy, electric energy, other energy, PV"]
         ax1[1].bar("total",(HVAC_kWh+AC_kWh)/1000)
         ax1[1].bar("total",el_kWh, bottom=(HVAC_kWh+AC_kWh)/1000)
         ax1[1].bar("total", EV_kWh, bottom=(HVAC_kWh + AC_kWh) / 1000+el_kWh)
         ax1[1].bar("PV", PV_total)
+        ax1[1].set_ylabel('Energy [kWh]')
+        ax1[1].yaxis.tick_right()
+        ax1[1].yaxis.set_label_position("right")
         #ax1.set_title("test")
         fig1.suptitle("Total energy needs")
         st.pyplot(fig1)
@@ -420,20 +418,25 @@ with tab8:
         ax2[1].bar("total", EV_kWh, bottom=(energies_heating + energies_cooling) / 1000+el_kWh)
         # in case of HVAC or AC show optimized values
         ax2[1].bar("PV", PV_total)
+        ax2[1].set_ylabel('Electric energy [kWh]')
+        ax2[1].yaxis.tick_right()
+        ax2[1].yaxis.set_label_position("right")
 
         sizes = np.array([(energies_heating + energies_cooling) / 1000.0, el_kWh, EV_kWh])
         total_en = np.sum(sizes)
-        labels = ['HVAC', 'Building \n consumption', 'EV/PHEV']
+        labels = ['HVAC', 'Building\nappliances\nconsumption', 'EV/PHEV']
         # you have to transform from % to values autopct converts array into %!!!!
         ax2[0].pie(sizes, labels=labels,
                    autopct=lambda sizes: '{:.2f}%({:.2f} kWh)'.format(sizes, (sizes / 100.0) * total_en),
-                   startangle=180, explode=[0.2, 0.1, 0.1])
+                   startangle=140, explode=[0.2, 0.1, 0.1])
         ax2[0].axis('equal')
 
         fig2.suptitle("Total electric energy needs")
         st.pyplot(fig2)
-        if ((use_case.heating_type==1) and energies_heating>0) or ((use_case.cooling_type==1) and (energies_cooling>0)):
-            st.write("HVAC energies optimized additional savings:", int(energies_heating-energies_heating_optimized), 'Wh')
+        if ((use_case.heating_type==1) and (energies_heating>0)):
+            st.write("Heat pump energies optimized additional savings:", int(energies_heating-energies_heating_optimized), 'Wh')
+        if ((use_case.cooling_type==1) and (energies_cooling>0)):
+            st.write("Air conditioner energies optimized additional savings:", int(energies_cooling-energies_cooling_optimized), 'Wh')
 
         #*********************
         # end plot 2         *
@@ -445,12 +448,15 @@ with tab8:
         EV_start_time= np.rint(use_case.EV_startTimes[0]/15)
         EV_end_time = np.rint(use_case.EV_endTimes[0]/15)
         flexibility_EV=0
-        if vehicle:
-            flexibility_EV=(EV_end_time-EV_start_time)/96*EV_kWh
-        if EV_start_time>95:
-            EV_start_time-=96
-        if EV_end_time>95:
-            EV_end_time-=96
+        if EV_on:
+            if priv_com == 0:
+                flexibility_EV=(EV_end_time-EV_start_time)/96*EV_kWh
+                if EV_start_time>95:
+                    EV_start_time-=96
+                if EV_end_time>95:
+                    EV_end_time-=96
+            else:
+                flexibility_EV = EV_kWh
 
         flexibility_HVAC = (energies_heating+energies_cooling)/1000/len(use_case.list_of_times_HVAC)
         flexibility_battery = 0
@@ -458,13 +464,14 @@ with tab8:
             flexibility_battery = use_case.bat_capacity*use_case.bat_efficiency
         fig3, ax3 = plt.subplots(1,2,sharey=True)
         tets=ax3[0].bar("Total energy",(energies_heating+energies_cooling)/1000,label='HVAC')
-        ax3[0].bar("Total energy",el_kWh, bottom=(energies_heating+energies_cooling)/1000,label='Building consumption')
+        ax3[0].bar("Total energy",el_kWh, bottom=(energies_heating+energies_cooling)/1000,label='Building appliances\nconsumption')
         ax3[0].bar("Total energy", EV_kWh, bottom=(energies_heating + energies_cooling) / 1000+el_kWh,label='EV')
         ax3[0].legend()
-        ax3[1].bar("Flexible energy", flexibility_EV, label='EV')
-        ax3[1].bar("Flexible energy", flexibility_HVAC,bottom=flexibility_EV, label='HVAC')
-        ax3[1].bar("Flexible energy", flexibility_battery, bottom=flexibility_EV+flexibility_HVAC, label='Battery')
+        ax3[1].bar("Flexible energy", flexibility_EV, label='EV', color='wheat')
+        ax3[1].bar("Flexible energy", flexibility_HVAC,bottom=flexibility_EV, label='HVAC',color='tan')
+        ax3[1].bar("Flexible energy", flexibility_battery, bottom=flexibility_EV+flexibility_HVAC, label='Battery',color='sienna')
         ax3[1].legend()
+        ax3[0].set_ylabel('Electric energy [kWh]')
         fig3.suptitle("Flexibility")
         st.pyplot(fig3)
         needed_bat = (energies_heating + energies_cooling) / 1000 + el_kWh + EV_kWh - flexibility_EV - flexibility_HVAC - flexibility_battery
