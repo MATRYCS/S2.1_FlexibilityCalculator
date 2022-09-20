@@ -55,7 +55,7 @@ if st.sidebar.checkbox('Battery'):
 st.title("Matrycs - Catalogue service")
     
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["🗺️Map", "📃Building thermal profile", "📃User profile", "📃PV", "📃EV/PHEV",  "📃Battery", "📈Profiles",  "	📊Flexibility"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["🗺️Map", "📃Building thermal profile", "📃User profile", "📃PV", "📃EV",  "📃Battery", "📈Profiles",  "	📊Flexibility"])
 with tab1:
     st.map(map_data)
     
@@ -190,9 +190,9 @@ with tab5:
 
     else:
         number_of_cars = st.number_input("Number of vehicles:", min_value=0, max_value=None, value=1,
-                                               help="Total number of all EV or PHEV vehicles in the fleet.")
+                                               help="Total number of all EV vehicles in the fleet.")
         distance_EV = st.number_input("Average daily distance done by vehicle [km]", min_value=0, max_value=None, value=20,
-                                               help="Average daily distance of the EV or PHEV vehicles, you can estimate the total distance divided by the number of vehicles")
+                                               help="Average daily distance of EV vehicles, you can estimate the total distance divided by the number of vehicles")
 
 with tab6:
     if battery_on:
@@ -227,7 +227,7 @@ with tab7:
             y=alt.Y('ConsumptionHouse',title="Power[W]"), # we set x and y label only in one chart
             # by setting colors we can define legend for all profiles
             color=alt.Color('Color:N', scale=alt.Scale(range=['SpringGreen', 'black', 'blue', 'brown'],
-                                                domain=['PV', 'Consumption house', 'EV/PHEV', 'Commercial building']))
+                                                domain=['PV', 'Consumption house', 'EV', 'Commercial building']))
         )
         profil3=alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='blue').encode(
             x='Time',
@@ -284,7 +284,7 @@ with tab8:
         #*********************
         #     plot 1         *
         #*********************
-        labels=['HVAC','Building\nappliances\nconsumption','EV/PHEV']
+        labels=['HVAC','Building\nappliances\nconsumption','EV']
 
         sizes=np.array([(HVAC_kWh+AC_kWh)/1000.0,el_kWh,EV_kWh])
         total_en=np.sum(sizes)
@@ -413,6 +413,7 @@ with tab8:
                         break
         else:
             energies_cooling=0
+
         ax2[1].bar("total",(energies_heating+energies_cooling)/1000)
         ax2[1].bar("total",el_kWh, bottom=(energies_heating+energies_cooling)/1000)
         ax2[1].bar("total", EV_kWh, bottom=(energies_heating + energies_cooling) / 1000+el_kWh)
@@ -424,7 +425,7 @@ with tab8:
 
         sizes = np.array([(energies_heating + energies_cooling) / 1000.0, el_kWh, EV_kWh])
         total_en = np.sum(sizes)
-        labels = ['HVAC', 'Building\nappliances\nconsumption', 'EV/PHEV']
+        labels = ['HVAC', 'Building\nappliances\nconsumption', 'EV']
         # you have to transform from % to values autopct converts array into %!!!!
         ax2[0].pie(sizes, labels=labels,
                    autopct=lambda sizes: '{:.2f}%({:.2f} kWh)'.format(sizes, (sizes / 100.0) * total_en),

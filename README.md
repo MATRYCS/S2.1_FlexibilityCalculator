@@ -10,14 +10,20 @@ The service uses different calculated consumption and generation curves together
 windows and calculates the flexibility potential
 
 The tool utilize one open-source library to get statistical profiles of electrical consumption related to the behavior. 
-1. Artificial Load Profile Generator (ALPG) https://github.com/GENETX/alpg, please use modified version that is also updated to be able latest astral package available https://gitlab.comsensus.eu/AndrejCampa/alpg
+1. Artificial Load Profile Generator (ALPG) https://github.com/GENETX/alpg, please use modified version that is also updated to be able latest astral package available [https://gitlab.com/comsensus/alpg](https://gitlab.com/comsensus/alpg)
 
 
 As such, the tool is free to use and modify under the GPL v3.0 license
 
+Authors and acknowledgment
+--------------
+
 Authors:
 1. Andrej Čampa
 2. Denis Sodin
+
+The service was developed in the frame of the [MATRYCS project.](https://matrycs.eu/)
+The MATRYCS project has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement no. 1010000158.
 
 
 Running
