@@ -1,92 +1,85 @@
-# FlexibilityCalculator
+Flexibility Calculator
+==============
+
+This tool calculates the flexibility potential of household or building. The parameters used for calculation and program
+flow is shown in following figure:
+
+![program flow](catalogues-Program_flow.png)
+
+The service uses different calculated consumption and generation curves together with flexible asset settings and 
+windows and calculates the flexibility potential
+
+The tool utilize one open-source library to get statistical profiles of electrical consumption related to the behavior. 
+1. Artificial Load Profile Generator (ALPG) https://github.com/GENETX/alpg, please use modified version that is also updated to be able latest astral package available [https://gitlab.com/comsensus/alpg](https://gitlab.com/comsensus/alpg)
 
 
+As such, the tool is free to use and modify under the GPL v3.0 license
 
-## Getting started
+Authors and acknowledgment
+--------------
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Authors:
+1. Andrej Čampa
+2. Denis Sodin
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+The service was developed in the frame of the [MATRYCS project.](https://matrycs.eu/)
+The MATRYCS project has received funding from the European Union's Horizon 2020 research and innovation programme under grant agreement no. 1010000158.
 
-## Add your files
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+Running
+--------------
 
-```
-cd existing_repo
-git remote add origin https://gitlab.com/comsensus/flexibilitycalculator.git
-git branch -M main
-git push -uf origin main
-```
+Run streamlit run .\flexibility UI
 
-## Integrate with your tools
 
-- [ ] [Set up project integrations](https://gitlab.com/comsensus/flexibilitycalculator/-/settings/integrations)
+The tool is written in the Python3 language and should work on all major platforms. 
 
-## Collaborate with your team
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+Generation
+--------------
 
-## Test and Deploy
+After pressing "Calculate profiles," all asset profiles are shown under the "Profiles" tab. As shown in the following 
+figure, two types of output are generated. First, the assets' profiles, even those not considered in 
+the final calculation. And in the second graph a static heating demand of the building and outside temperature. According to
+the type of HVAC this demand is used to calculate the consumption of appropriate HVAC devices and time windows in which
+the HVAC needs to turn on and "compensate" the excess or deficit of energy.
 
-Use the built-in continuous integration in GitLab.
+![profiles](profiles.png)
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Output
+--------------
 
-***
+The main output is under the tab "flexibility" in the first two graphs. The Total energy needs are shown along the PV production.
+In the second set of graphs, the previous energy needs are considered; however, the heating of the building is modelled according
+to the selected HVAC. Therefore the HVAC electrical needs are lower due to higher efficiency (heat pump or air conditioner). 
+In the case of "other" types of heating, electric energy is not considered since the energy is obtained from another source, e.g. gas.
 
-# Editing this README
+![energy needs pie chart](flexibility_1.png)
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Finally, the flexibility of the devices is shown, and for each device and use case, the flexibility is calculated differently.
+For instance, for the EV of the household, the charging can not happen during working hours; therefore, we have reduced and 
+not full flexibility. Similarly, for HVAC systems, in a specific time window, the system needs to turn on. The battery 
+needs to be added to cover the energies outside the time window to get the full flexible potential. Furthermore, for 
+inflexible devices, the battery can be used. 
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+![flexibility](flexibility_2.png)
 
-## Name
-Choose a self-explaining name for your project.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+**Version 0.9**
+- ALPG changed to class
+- streamlit UI for selecting parameters
+- full integration of libraries
+- RC simulator changed with own static model of heat building, considering solar insolation through windows and ventilation
+- calculations of metrics and flexibility
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+**Version 0.2**
+- Written new building model (provides the power exceed or deficit)
+- Solar gain calculator (use for south windows)
+- Cleaned RC-simulator dependencies in the main program
+- All asset profiles are available
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+**Version 0.1**
+- Created first profiles using alpg and RC simulator library
+- Calculating PV demand from JRC
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.

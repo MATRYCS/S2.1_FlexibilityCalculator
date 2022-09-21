@@ -1,0 +1,4 @@
+[submodule "alpg"]
+	path = alpg
+	url = https://gitlab.comsensus.eu/AndrejCampa/alpg.git
+	branch = master
