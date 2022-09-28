@@ -243,28 +243,28 @@ class profilgenerator2(object):
             offset =  24 * 60
         else:
             offset = 2 * 24 * 60
-        with open(r'output\ElectricVehicle_Starttimes.txt', "r") as datafile:
+        with open(r'output/ElectricVehicle_Starttimes.txt', "r") as datafile:
             file = (datafile.read().split())  # read file in 1 list
             for startTime in file:
                 EV_string = startTime.split(":")[1]  # get all the ending times as a string of starting times
                 EV_list = EV_string.split(",")  # make a list of strings; each string its own starting time
                 EV_startTimes = [(int(x) - offset) for x in EV_list]
 
-        with open(r'output\ElectricVehicle_Endtimes.txt', "r") as datafile:
+        with open(r'output/ElectricVehicle_Endtimes.txt', "r") as datafile:
             file = (datafile.read().split())  # read file in 1 list
             for endTime in file:
                 EV_string = endTime.split(":")[1]
                 EV_list = EV_string.split(",")
                 EV_endTimes = [int(x) - offset for x in EV_list]
 
-        with open(r'output\ElectricVehicle_Specs.txt', "r") as datafile:
+        with open(r'output/ElectricVehicle_Specs.txt', "r") as datafile:
             file = (datafile.read().split())  # read file in 1 list
             for spec in file:
                 specs = spec.split(":")[1]
                 capacity = float(specs.split(",")[0])  # battery capacity
                 charge_power = float(specs.split(",")[1])
 
-        with open(r'output\ElectricVehicle_RequiredCharge.txt', "r") as datafile:
+        with open(r'output/ElectricVehicle_RequiredCharge.txt', "r") as datafile:
             file = (datafile.read().split())  # read file in 1 list
             for charge in file:
                 charges = charge.split(":")[1]
@@ -330,7 +330,7 @@ class profilgenerator2(object):
         startWash = []
 
         # extract dishWasher start and end time of operation and generate random start point
-        with open(r'output\Dishwasher_Starttimes.txt', "r") as datafile:
+        with open(r'output/Dishwasher_Starttimes.txt', "r") as datafile:
             file = (datafile.read().split())  # read file in 1 list of all dishwashers
             for dishWasher in file:
                 dishWash_num = dishWasher.split(":")[0]  # get the number of house the dishwasher belongs to
@@ -342,7 +342,7 @@ class profilgenerator2(object):
                 for t in dishWashStarts:
                     startDish.append((t) / 60 / 24)
 
-        with open(r'output\Dishwasher_Endtimes.txt', "r") as datafile:
+        with open(r'output/Dishwasher_Endtimes.txt', "r") as datafile:
             file = (datafile.read().split())  # read file in 1 list
             for dishWasher in file:
                 dishWash_num = dishWasher.split(":")[0]  # get the number of house the dishwasher belongs to
@@ -359,7 +359,7 @@ class profilgenerator2(object):
                                            i]))  # make a starting time of each dishwasher cycle as random start time in cylce interval
 
         # extract WashingMachine start and end time of operation and generate random start point
-        with open(r'output\WashingMachine_Starttimes.txt', "r") as datafile:
+        with open(r'output/WashingMachine_Starttimes.txt', "r") as datafile:
             file = (datafile.read().split())  # read file in 1 list of all WashingMachine
             for WashingMachine in file:
                 WashingMachine_num = WashingMachine.split(":")[0]  # get the number of house the WashingMachine belongs to
@@ -372,7 +372,7 @@ class profilgenerator2(object):
                 for t in WashingMachineStarts:
                     startWash.append((t) / 60 / 24)
 
-        with open(r'output\WashingMachine_Endtimes.txt', "r") as datafile:
+        with open(r'output/WashingMachine_Endtimes.txt', "r") as datafile:
             file = (datafile.read().split())  # read file in 1 list
             for WashingMachine in file:
                 WashingMachine_num = WashingMachine.split(":")[0]
@@ -388,7 +388,7 @@ class profilgenerator2(object):
                         random.randint(globals()['WashingMachine{}'.format(WashingMachine_num) + 'start'][i],
                                        globals()['WashingMachine{}'.format(WashingMachine_num) + 'end'][i]))
 
-        df = pd.read_csv(r'output\Electricity_Profile.csv', sep=";",
+        df = pd.read_csv(r'output/Electricity_Profile.csv', sep=";",
                          header=None)  # read the csv file (put 'r' before the path string to address any special characters in the path, such as '\'). Don't forget to put the file name at the end of the path + ".csv"
         df = df.astype(float)  # pretvori dataframe v float, drugače dela z integerji
 
@@ -458,13 +458,13 @@ class profilgenerator2(object):
         self.df_new = pd.DataFrame(dic)  # create pandas data frame from dictionary
 
         if washMachine == "on" and dishWash == "on":
-            file_name = 'output\Electricity_Profile_' + str(interval) + 'min_DishAndWash.csv'
+            file_name = 'output/Electricity_Profile_' + str(interval) + 'min_DishAndWash.csv'
         elif washMachine == "on":
-            file_name = 'output\Electricity_Profile_' + str(interval) + 'min_Wash.csv'
+            file_name = 'output/Electricity_Profile_' + str(interval) + 'min_Wash.csv'
         elif dishWash == "on":
-            file_name = 'output\Electricity_Profile_' + str(interval) + 'min_Dish.csv'
+            file_name = 'output/Electricity_Profile_' + str(interval) + 'min_Dish.csv'
         else:
-            file_name = 'output\Electricity_Profile_' + str(interval) + 'min.csv'
+            file_name = 'output/Electricity_Profile_' + str(interval) + 'min.csv'
 
         self.df_new.to_csv(file_name, index=False)
 
