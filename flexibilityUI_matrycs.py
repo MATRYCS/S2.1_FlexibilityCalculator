@@ -21,7 +21,8 @@ if "start" in st.session_state:
 
 def password_entered():
     """Checks whether a password entered by the user is correct."""
-    url = 'http://147.213.76.216:4000/user/get/token'
+    #url = 'http://147.213.76.216:4000/user/get/token'
+    url = 'https://matrycs.epu.ntua.gr/security_enabler/user/get/token'
     myobj = {
         "username": st.session_state["username"],
         "password": st.session_state["password"]
@@ -29,6 +30,7 @@ def password_entered():
     x = requests.post(url, json=myobj)
     # st.write(x.text)
     # st.write(x.status_code)
+    print(x.status_code)
     if x.status_code == 200:
         st.session_state["key"] = True
         st.session_state["start"] = datetime.now()
