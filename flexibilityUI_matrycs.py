@@ -239,7 +239,7 @@ else:
 
     run_button = st.sidebar.button('Calculate profiles')
     if run_button:
-        use_case.calculation()
+        use_case.calculation(type_of_family)
         created_profiles_bool = True
 
     with tab7:
@@ -480,18 +480,21 @@ else:
             # *********************
             #  flexibility        *
             # *********************
-            EV_start_time= np.rint(use_case.EV_startTimes[0]/15)
-            EV_end_time = np.rint(use_case.EV_endTimes[0]/15)
-            flexibility_EV=0
-            if EV_on:
-                if priv_com == 0:
-                    flexibility_EV=(EV_end_time-EV_start_time)/96*EV_kWh
-                    if EV_start_time>95:
-                        EV_start_time-=96
-                    if EV_end_time>95:
-                        EV_end_time-=96
-                else:
-                    flexibility_EV = EV_kWh
+            if len(use_case.EV_startTimes) > 0:
+                EV_start_time= np.rint(use_case.EV_startTimes[0]/15)
+                EV_end_time = np.rint(use_case.EV_endTimes[0]/15)
+                flexibility_EV=0
+                if EV_on:
+                    if priv_com == 0:
+                        flexibility_EV=(EV_end_time-EV_start_time)/96*EV_kWh
+                        if EV_start_time>95:
+                            EV_start_time-=96
+                        if EV_end_time>95:
+                            EV_end_time-=96
+                    else:
+                        flexibility_EV = EV_kWh
+            else:
+                flexibility_EV = 0
 
             flexibility_HVAC = (energies_heating+energies_cooling)/1000/len(use_case.list_of_times_HVAC)
             flexibility_battery = 0

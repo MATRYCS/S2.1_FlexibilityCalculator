@@ -19,6 +19,7 @@
 
 # This is an example configuration file!
 import sys
+
 # Select the output writer
 sys.path.append('./alpg')
 import writer as writer
@@ -30,10 +31,10 @@ import households
 
 class House_types(object):
     def __init__(self,
-                 startDay = 1,
-                 latitude = 46.6,
-                 longitude = 14.4,
-                 timezone = 'Europe/Ljubljana'
+                 startDay=1,
+                 latitude=46.6,
+                 longitude=14.4,
+                 timezone='Europe/Ljubljana'
                  ):
         self.startDay = startDay  # Initial day #only 1 or 2 (1 weekend-holiday / 2 work day )
         self.latitude = latitude
@@ -70,9 +71,7 @@ class House_types(object):
         self.capacityPHEV = 12000  # Wh
         self.powerPHEV = 3700  # W
 
-
-
-    def calculation(self):
+    def calculation(self, house_type):
         location1 = location.Location()  # latest astral library version needs location.Location instead location!!!
         location1.solar_depression = 'civil'
         location1.latitude = self.latitude
@@ -81,5 +80,25 @@ class House_types(object):
         self.householdList = []
         # Select the types of households
         # typical family house
-        self.householdList.append(households.HouseholdFamilyDualParent(parttime=False, jobless=False, startDay=self.startDay))
-
+        print(house_type)
+        # types_of_family = ["Single worker", "Single jobless", "Single part-time", "Couple", "Dual worker", "Family dual parent", "Family dual worker", "Family single parent", "Dual retired", "Single retired"]
+        if house_type == "Single worker":
+            self.householdList.append(households.HouseholdSingleWorker())
+        elif house_type == "Single jobless":
+            self.householdList.append(households.HouseholdSingleJobless())
+        elif house_type == "Single part-time":
+            self.householdList.append(households.HouseholdSingleParttime())
+        elif house_type == "Couple":
+            self.householdList.append(households.HouseholdCouple())
+        elif house_type == "Dual worker":
+            self.householdList.append(households.HouseholdDualWorker())
+        elif house_type == "Family dual parent":
+            self.householdList.append(households.HouseholdFamilyDualParent(parttime=False, jobless=False, startDay=self.startDay))
+        elif house_type == "Family dual worker":
+            self.householdList.append(households.HouseholdFamilyDualWorker())
+        elif house_type == "Family single parent":
+            self.householdList.append(households.HouseholdFamilySingleParent())
+        elif house_type == "Dual retired":
+            self.householdList.append(households.HouseholdDualRetired())
+        else:  # "Single retired"
+            self.householdList.append(households.HouseholdSingleRetired())

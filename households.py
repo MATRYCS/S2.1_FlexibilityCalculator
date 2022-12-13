@@ -203,7 +203,11 @@ class Household:
         
         for k, v, in self.ConsumptionShare.items():
             sumDevice = sum(self.consumptionFactor[k])
-            multiplier = ((self.ConsumptionShare[k]/100) * (((self.ConsumptionYearly/365) * numDays) * 1000) * 60) / sumDevice #joules
+            #print("Sum of devices",sumDevice)
+            if sumDevice != 0:
+                multiplier = ((self.ConsumptionShare[k]/100) * (((self.ConsumptionYearly/365) * numDays) * 1000) * 60) / sumDevice #joules
+            else:
+                multiplier = 1
             self.Consumption[k] = [x * multiplier for x in self.consumptionFactor[k]]
             
             self.Consumption[k] = [round(x) for x in self.Consumption[k]]
@@ -443,7 +447,8 @@ class Household:
         
 
 class HouseholdSingleWorker(Household):
-    def __init__(self):
+    def __init__(self, startDay = 1):
+        Household.__init__(self, startDay)
         self.generate()
         self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
@@ -477,7 +482,8 @@ class HouseholdSingleWorker(Household):
             self.generateDishwashdays(3)
 
 class HouseholdSingleJobless(Household):
-    def __init__(self):
+    def __init__(self, startDay = 1):
+        Household.__init__(self, startDay)
         self.generate()
         self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
@@ -509,7 +515,8 @@ class HouseholdSingleJobless(Household):
             self.generateDishwashdays(3)
             
 class HouseholdSingleParttime(Household):
-    def __init__(self):
+    def __init__(self, startDay=1):
+        Household.__init__(self, startDay)
         self.generate()
         self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
@@ -542,7 +549,8 @@ class HouseholdSingleParttime(Household):
 
 class HouseholdCouple(Household):
     # Select whether the second adult is a fulltime worker (both false), parttime or jobless
-    def __init__(self, parttime=False, jobless=False):
+    def __init__(self, parttime=False, jobless=False, startDay=1):
+        Household.__init__(self, startDay)
         self.generate()
         self.ConsumptionYearly        = profilegentools.gaussMinMax(3360,700)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
@@ -575,8 +583,8 @@ class HouseholdCouple(Household):
             self.generateDishwashdays(3)        
 
 class HouseholdDualWorker(HouseholdCouple):
-    def __init__(self, parttime=False, jobless=False):
-        HouseholdCouple.__init__(self, parttime, jobless)
+    def __init__(self, parttime=False, jobless=False, startDay=1):
+        HouseholdCouple.__init__(self, parttime, jobless, startDay)
     # Added this class for backwards compatibility
     
 class HouseholdFamilyDualParent(Household):    
@@ -617,12 +625,13 @@ class HouseholdFamilyDualParent(Household):
         
 
 class HouseholdFamilyDualWorker(HouseholdFamilyDualParent):            
-    def __init__(self, parttime=False, jobless=False):
-        HouseholdFamilyDualParent.__init__(self, parttime, jobless)
+    def __init__(self, parttime=False, jobless=False, startDay=1):
+        HouseholdFamilyDualParent.__init__(self, parttime, jobless,startDay)
     # Added this class for backwards compatibility
     
 class HouseholdFamilySingleParent(Household):        
-    def __init__(self, parttime=False, jobless=False):
+    def __init__(self, parttime=False, jobless=False, startDay=1):
+        Household.__init__(self, startDay)
         self.generate()
         numKids = round(max(min(4, random.gauss(1.7, 0.4)), 1))    # http://www.cbs.nl/nl-NL/menu/themas/bevolking/faq/specifiek/faq-hoeveel-kinderen.htm
     
@@ -656,7 +665,8 @@ class HouseholdFamilySingleParent(Household):
             self.generateDishwashdays(min(5+numKids, 7))
     
 class HouseholdDualRetired(Household):    
-    def __init__(self):
+    def __init__(self, startDay=1):
+        Household.__init__(self, startDay)
         self.generate()
         self.ConsumptionYearly        = profilegentools.gaussMinMax(3360,600)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         
@@ -679,7 +689,8 @@ class HouseholdDualRetired(Household):
 
     
 class HouseholdSingleRetired(Household):    
-    def __init__(self):
+    def __init__(self, startDay=1):
+        Household.__init__(self, startDay)
         self.generate()
         self.ConsumptionYearly        = profilegentools.gaussMinMax(2010,400)*consumptionFactor #kWh http://www.nibud.nl/uitgaven/huishouden/gas-elektriciteit-en-water.html
         

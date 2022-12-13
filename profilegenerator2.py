@@ -6,7 +6,7 @@ Authors: Andrej Campa, Denis Sodin
 example:
 import profilegenerator2
 use_case = profilegenerator2.profilgenerator2()
-use_case.calculation()
+use_case.calculation(house_type)
 print(use_case.tiltPV)
 
 """
@@ -272,7 +272,7 @@ class profilgenerator2(object):
 
         if len(EV_startTimes) == 0:
             charging_profile = [0.0] * 96
-            print("EV file is empty")
+            #print("EV file is empty")
         else:
             for i in range(len(EV_startTimes)):
                 charge_time = round(charge / charge_power * 60.0 / 15.0)
@@ -471,7 +471,7 @@ class profilgenerator2(object):
     ####################
     # main calculation #
     ####################
-    def calculation(self):
+    def calculation(self, house_type):
 
         # remove all old outputs from file
         diro = 'output'
@@ -501,7 +501,7 @@ class profilgenerator2(object):
         else:
             startDay = 2
         config.startDay=startDay
-        config.calculation()
+        config.calculation(house_type)
         #print(config.EV)
         print('Loading config: ' + cfgFile, flush=True)
         print("The current config will create and simulate " + str(len(config.householdList)) + " households", flush=True)
@@ -658,7 +658,7 @@ class profilgenerator2(object):
                 sum_energy_needed += energy_limit
                 self.list_of_times_HVAC.append(hour)
                 self.list_of_energies_HVAC.append(-energy_limit)
-        print(len(self.list_of_energies_HVAC))
+        #print(len(self.list_of_energies_HVAC))
         if ((sum_energy_needed<(0.4*energy_limit))&(len(self.list_of_energies_HVAC))):
             self.list_of_energies_HVAC[0]+=sum_energy_needed
         else:
