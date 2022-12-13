@@ -1,23 +1,8 @@
 #!/usr/bin/python3    
-
-# Artifical load profile generator v1.1, generation of artificial load profiles to benchmark demand side management approaches
-# Copyright (C) 2018 Gerwin Hoogsteen
-
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
-# This is an example configuration file!
+# Author: Andrej Campa
+# This is the file that execute statistic based profile generation of households. Different types of households
+# are available according to the ALPG library
+# Additional options to modify asset penetration is available here.
 import sys
 
 # Select the output writer

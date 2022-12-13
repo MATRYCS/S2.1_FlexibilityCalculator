@@ -15,6 +15,26 @@ The tool utilize one open-source library to get statistical profiles of electric
 
 As such, the tool is free to use and modify under the GPL v3.0 license
 
+Structure of the project
+--------------
+The main library responsible for generating the profiles is **profilegenerator2.py**.
+Other important files are:
+1. **flexibilityUI.py** the streamlit-based UI interface for simulating individual households.
+2. **flexibilityUI_matrycs.py** same as *flexibilityUI.py*, but with built-in security related to the MATRYCS project.
+3. **flexibilityUI_zone.py** the UI for simulating zones instead of individual houses.
+
+
+Zones
+--------------
+The organization of the zone UI differs from the simulation of a single household. The main reason is that some of the 
+assets are common and do not need to be described individually. Things are grouped together to simplify and better 
+understand the influences among different assets. For example, photovoltaics can be completely decoupled from the 
+generation of the building profile, the same is true for batteries and partially for electric vehicles.
+
+User profiles and building profiles are closely linked due to the additional self-energy heating associated with 
+the electricity consumption of the building systems and personal heating.
+
+
 Authors and acknowledgment
 --------------
 
@@ -64,6 +84,10 @@ inflexible devices, the battery can be used.
 
 ![flexibility](flexibility_2.png)
 
+**Version 1.0**
+- Implemented additional house types
+- Fixed bugs related to scalling of energy profiles
+- Fixed random bug related to not calculating EV
 
 **Version 0.9**
 - ALPG changed to class
