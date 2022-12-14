@@ -89,7 +89,7 @@ else:
     st.title("Matrycs - Catalogue service")
 
 
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["🗺️Map", "📃Building thermal profile", "📃User profile", "📃PV", "📃EV",  "📃Battery", "📈Profiles",  "	📊Flexibility"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["🗺️Map", "📃Building thermal profile", "📃User profile", "📃PV", "📃EV",  "📃Battery", "📈Profiles",  "📊Flexibility"])
     with tab1:
         st.map(map_data)
 
