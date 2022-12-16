@@ -114,13 +114,16 @@ class profilgenerator2(object):
         self.EV_capacity = EV_capacity  # [Wh]
         self.EV_power = EV_power  # [W] maks charging power
         self.df_new = None
-        self.PVpower = None
-        self.PVdata = None
+        self.PVpower = np.zeros(96)
+        self.PVdata = np.zeros(96)
         self.EV_startTimes = []
         self.EV_endTimes = []
         self.charging_profile = []
         self.list_of_times_HVAC = []
         self.list_of_energies_HVAC = []
+        self.house_type = "Single worker"
+        self.com_build_on = "private house"
+        self.bus_profile = np.zeros(96)
 
     # we use default COP (coefficient of performance) curve from here as reference
     # https://tisto.eu/images/thumbnails/1376/1126/detailed/5/toplotna-crpalka-zrak-voda-18-6-kw-monoblok-400-v-25-c-r407c-5025-tisto.png
@@ -670,6 +673,221 @@ class profilgenerator2(object):
             'HeatingDemand': self.HeatingDemand,
             'OutsideTemp': self.OutsideTemp,
             'SolarGains': self.SolarGains, 
+            'ElectricVehicle': self.charging_profile,
+            'BusinessBuildingProfile': self.bus_profile,
+            'Photovoltaic': self.PVpower,
+            'ConsumptionHouse': self.consumption_total_resampled
+        })
+
+    def calculation_BH(self):
+        """
+        Calculates for one House/Building el and heating/cooling demand
+        :return: daily results: profiles for one Building House
+        :rtype: dataframe
+        """
+
+        # remove all old outputs from file
+        diro = 'output'
+        for f in os.listdir(diro):
+            os.remove(os.path.join(diro, f))
+
+        # get typical irradiance and temperatures for PV and building model
+        self.PVdata = self.getPVprofile(m=self.month, latitude=self.latitude, longitude=self.longitude,
+                                        surface_tilt=self.tiltPV, surface_azimuth=self.azimuthPV)
+        temperature = self.PVdata["T2m"]
+        irradiance = self.PVdata["G(i)"]  # global irradiance on a fixed plane
+        direct = self.PVdata["Gb(i)"]  # Direct irradiance on a fixed plane
+        difuse = self.PVdata["Gd(i)"]  # diffuse irradiance on a fixed plane
+
+        ################################
+        #### Load profile generator ####
+        ################################
+        if self.com_build_on=="private house":
+            config = houses_matrycs.House_types()
+            if self.weekend:
+                startDay = 1
+            else:
+                startDay = 2
+            config.startDay = startDay
+            config.calculation(self.house_type)
+            # print(config.EV)
+            print('Loading config: ' + cfgFile, flush=True)
+            print("The current config will create and simulate " + str(len(config.householdList)) + " households",
+                  flush=True)
+            print("Results will be written into: " + cfgOutputDir + "\n", flush=True)
+            print("NOTE: Simulation may take a (long) while...\n", flush=True)
+
+            # Check the config:
+            if config.penetrationEV + config.penetrationPHEV > 100:
+                print("Error, the combined penetration of EV and PHEV exceed 100!", flush=True)
+                exit()
+            if config.penetrationPV < config.penetrationBattery:
+                print("Error, the penetration of PV must be equal or higher than PV!", flush=True)
+                exit()
+            if config.penetrationHeatPump + config.penetrationCHP > 100:
+                print("Error, the combined penetration of heatpumps and CHPs exceed 100!", flush=True)
+                exit()
+
+            # Randomize using the seed
+            # random.seed(42)
+
+            # Create empty files
+            writer.createEmptyFiles()
+
+            # neighbourhood.neighbourhood()
+
+            hnum = 0
+
+            householdList = config.householdList
+            print("this is householdlist", householdList)
+            numOfHouseholds = len(householdList)
+
+            # original script iterates through alpg houses here, we only take 1 representative house
+
+            print("Household " + str(hnum + 1) + " of " + str(numOfHouseholds), flush=True)
+            householdList[0].hasEV = True
+            householdList[0].Devices['ElectricalVehicle'].BufferCapacity = self.EV_capacity  # .capacityEV
+            householdList[0].Devices['ElectricalVehicle'].Consumption = self.EV_power  # powerEV
+
+            householdList[0].simulate()
+
+            # Warning: On my PC the random number is still the same at this point, but after calling scaleProfile() it isn't!!!
+            householdList[0].scaleProfile()
+            householdList[0].reactivePowerProfile()
+            householdList[0].thermalGainProfile()
+
+            writer.writeHousehold(householdList[0], hnum)
+
+            globals()['PersonGain{}'.format(hnum + 1)] = householdList[0].HeatGain["PersonGain"]
+            globals()['Consumption{}'.format(hnum + 1)] = householdList[0].Consumption["Total"]
+
+            # building
+            # Empty Lists for Storing Data to Plot
+            ElectricityOut = []
+            self.HeatingDemand = []  # Energy required by the zone
+            HeatingEnergy = []  # Energy required by the supply system to provide HeatingDemand
+            CoolingEnergy = []  # Energy required by the supply system to get rid of CoolingDemand
+            IndoorAir = []
+            self.OutsideTemp = []
+            self.SolarGains = []
+            COP = []
+
+            # 1440 everyminute
+            gain_per_person = globals()['PersonGain{}'.format(hnum + 1)]  # W per person
+            gain_per_person = np.interp(np.arange(0, len(gain_per_person), 15), np.arange(0, len(gain_per_person), 1),
+                                        gain_per_person)
+            # electric appliance gain 40% to heat
+            gain_consumption = globals()['Consumption{}'.format(hnum + 1)]
+            gain_per_person += 0.4 * np.interp(np.arange(0, len(gain_consumption), 15),
+                                               np.arange(0, len(gain_consumption), 1), gain_consumption)
+            # print("internal gains")
+            # print(np.sum(gain_per_person)/4)
+            self.resample()
+
+            self.consumption_total_resampled = self.df_new["agregated"]
+        ###############################
+        # Business Building el. model #
+        ###############################
+        elif self.com_build_on == "commercial building":
+            self.bus_profile = self.business_building_profile(self.background_consumption, self.peak_consumption,
+                                                              office_hours=[self.office_start_t, self.office_end_t],
+                                                              weekend=self.weekend)
+
+        ###########################################
+        ##### Building model - heating cooling ####
+        ###########################################
+        # Initialise an instance of the building
+        house = Building(window_area=self.window_area,
+                         walls_area=self.walls_area,
+                         floor_area=self.floor_area,
+                         volume_building=self.volume_building,
+                         U_walls=self.U_walls,
+                         U_windows=self.U_windows,
+                         ach_vent=self.ach_vent,
+                         ventilation_efficiency=self.ventilation_efficiency,
+                         thermal_capacitance_per_floor_area=self.thermal_capacitance,
+                         t_set=self.t_set,
+                         latitude=self.latitude,
+                         longitude=self.longitude)
+
+        # get sout window irradiance, that is used in the daily loop
+
+        south_window = self.getPVprofile(m=self.month, surface_tilt=self.windows_tilt,
+                                         surface_azimuth=self.south_window_azimuth)
+        irradiance_south_direct = south_window["Gb(i)"]  # Direct irradiance on a fixed plane
+        irradiance_south_diff = south_window["Gd(i)"]
+
+        # Loop through  24*4 (15 min intervals) of the day
+        self.HeatingDemand = []
+        self.OutsideTemp = []
+        self.SolarGains = []
+
+        for hour in range(
+                24 * 4):  # in this case hour is actualy 15 min interval, therefore calc_sun_position in radiation.py needs to be modified
+
+            # Gains from occupancy and appliances
+            if self.com_build_on == "private house":
+                house.internal_gains = gain_per_person[hour]
+            # Extract the outdoor temperature
+            t_out = temperature[hour]
+            # reset solar gains after the reset add as many different windows as needed
+            house.solar_gains = 0.0
+            house.solar_power_gains(window_area=self.south_window_area,
+                                    irradiance_dir=irradiance_south_direct[hour],
+                                    irradiance_dif=irradiance_south_diff[hour],
+                                    month=self.month,
+                                    hour=hour,
+                                    tilt=self.windows_tilt,
+                                    azimuth=self.south_window_azimuth,
+                                    transmittance=0.7,
+                                    )
+            house.calc_heat_demand(t_out)
+
+            self.HeatingDemand.append(house.heat_demand)
+            self.OutsideTemp.append(t_out)
+            self.SolarGains.append(house.solar_gains)
+
+
+
+        ######################
+        # Electric vehicle
+        ######################
+        if self.com_build_on == "private house":
+            self.EV_startTimes, self.EV_endTimes, self.charging_profile = self.EVprofile()
+        else:
+            self.charging_profile = np.zeros(96)
+        #################################
+        # Times for heating and cooling #
+        # if daily cooling and heating is not exceeding the 1 degree of total thermal capacitance, we neglect it!
+        # Steps:
+        # 1. calculate thermal heat-capacitance of building/house for 1 degree celsius difference
+        #################################
+
+        energy_limit = self.thermal_capacitance / (60 * 60) * self.floor_area  # Wh
+        sum_energy_needed = 0
+        self.list_of_times_HVAC = []
+        self.list_of_energies_HVAC = []
+        for hour in range(24 * 4):
+            sum_energy_needed += self.HeatingDemand[hour] / 4.0  # divided by 4 since we are
+            # operating with energy on timeslice of 15 minutees
+            if sum_energy_needed > energy_limit:
+                sum_energy_needed -= energy_limit  # transfer rest of the energy to next time slice
+                self.list_of_times_HVAC.append(hour)
+                self.list_of_energies_HVAC.append(energy_limit)
+            elif sum_energy_needed < -energy_limit:
+                sum_energy_needed += energy_limit
+                self.list_of_times_HVAC.append(hour)
+                self.list_of_energies_HVAC.append(-energy_limit)
+        # print(len(self.list_of_energies_HVAC))
+        if ((sum_energy_needed < (0.4 * energy_limit)) & (len(self.list_of_energies_HVAC))):
+            self.list_of_energies_HVAC[0] += sum_energy_needed
+        else:
+            self.list_of_times_HVAC.append(96)
+            self.list_of_energies_HVAC.append(sum_energy_needed)
+        self.dailyResults = pd.DataFrame({
+            'HeatingDemand': self.HeatingDemand,
+            'OutsideTemp': self.OutsideTemp,
+            'SolarGains': self.SolarGains,
             'ElectricVehicle': self.charging_profile,
             'BusinessBuildingProfile': self.bus_profile,
             'Photovoltaic': self.PVpower,

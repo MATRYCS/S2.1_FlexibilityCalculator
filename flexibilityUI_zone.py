@@ -31,6 +31,7 @@ def save_values(value):
     :rtype: none
     """
     # save state parameters!
+    progress_bar.progress(0)
     if value == 'radio_BH':
         st.session_state.df.loc[st.session_state.building_no,'type_building'] = st.session_state.radio_BH
     elif value == 'type_of_family':
@@ -69,6 +70,18 @@ def save_values(value):
         st.session_state.df.loc[st.session_state.building_no, 'vent_eff'] = st.session_state.vent_eff
     elif value == 'thermal_cap':
         st.session_state.df.loc[st.session_state.building_no, 'thermal_cap'] = st.session_state.thermal_cap
+    elif value == 'window_param':
+        st.session_state.df.loc[st.session_state.building_no, 'window_param'] = st.session_state.window_param
+    elif value == 'window_area':
+        st.session_state.df.loc[st.session_state.building_no, 'window_area'] = st.session_state.window_area
+    elif value == 'U_window':
+        st.session_state.df.loc[st.session_state.building_no, 'U_window'] = st.session_state.U_window
+    elif value == 'south_window_area':
+        st.session_state.df.loc[st.session_state.building_no, 'south_window_area'] = st.session_state.south_window_area
+    elif value == 'south_window_azimuth':
+        st.session_state.df.loc[st.session_state.building_no, 'south_window_azimuth'] = st.session_state.south_window_azimuth
+    elif value == 'windows_tilt':
+        st.session_state.df.loc[st.session_state.building_no, 'windows_tilt'] = st.session_state.windows_tilt
     print("Saving state:", st.session_state.df)
 
 
@@ -94,11 +107,18 @@ if 'df' not in st.session_state:
                                                 'ach_vent': pd.Series(dtype='float'),
                                                 'vent_eff': pd.Series(dtype='float'),
                                                 'thermal_cap': pd.Series(dtype='int'),
+                                                'window_param': pd.Series(dtype='str'),
+                                                'window_area': pd.Series(dtype='int'),
+                                                'U_window': pd.Series(dtype='float'),
+                                                'south_window_area': pd.Series(dtype='int'),
+                                                'south_window_azimuth': pd.Series(dtype='int'),
+                                                'windows_tilt': pd.Series(dtype='int'),
                                                 },
     )
     # initialize all values
     st.session_state.df.loc[1] = ['private house', 'Single worker',  'Air conditioner', 3000,  'Heat pump', 2000,
-                                  1000, 5000, 9, 17, 'Basic',  500, 0.2, 20, 500, 400, 0.35, 0.6, 165000 ]
+                                  1000, 5000, 9, 17, 'Basic',  500, 0.2, 20, 500, 400, 0.35, 0.6, 165000,
+                                  'Basic', 20, 1.1, 10, 0, 90]
     st.session_state.radio_BH = 'private house'
     st.session_state.family = 'Single worker'
     st.session_state.cooling_type = 'Air conditioner'
@@ -116,6 +136,12 @@ if 'df' not in st.session_state:
     st.session_state.ach_vent = 0.35
     st.session_state.vent_eff = 0.6
     st.session_state.thermal_cap = 165000
+    st.session_state.window_param = 'Basic'
+    st.session_state.window_area = 20
+    st.session_state.U_window = 1.1
+    st.session_state.south_window_area = 10
+    st.session_state.south_window_azimuth = 0
+    st.session_state.windows_tilt = 90
 
 use_case = profilegenerator2.profilgenerator2()
 
@@ -169,7 +195,8 @@ with tab2:
     # initialize all values
     if st.session_state.building_no not in st.session_state.df.index:
         st.session_state.df.loc[st.session_state.building_no] = ['private house', 'Single worker', 'Air conditioner', 3000, 'Heat pump', 2000,
-                                                                    1000, 5000, 9, 17, 'Basic', 500, 0.2, 20, 500, 400, 0.35, 0.6, 165000]
+                                                                    1000, 5000, 9, 17, 'Basic', 500, 0.2, 20, 500, 400, 0.35, 0.6, 165000,
+                                                                 'Basic', 20, 1.1, 10, 0, 90]
     b_types = ['private house', 'commercial building']
     # for a proper refreshing you have to change the state of the radio button before you call it!
     # also the variable must be defined first before you call it! During the creation of the radio button
@@ -184,10 +211,9 @@ with tab2:
     if com_build_on == 'private house':
         st.write("**Household parameters**")
         st.session_state.family = st.session_state.df.loc[st.session_state.building_no, "type_of_family"]
-        type_of_family = st.selectbox("Type of household", types_of_family, key='family', on_change=save_values, args =("type_of_family",))
+        st.selectbox("Type of household", types_of_family, key='family', on_change=save_values, args =("type_of_family",))
 
     else:
-        type_of_family = "Single worker"
         st.write("**Commercial**")
         st.session_state.background_P = st.session_state.df.loc[st.session_state.building_no, "background_P"]
         use_case.background_consumption = st.number_input("Background power [W]", min_value=0, max_value=None,
@@ -308,15 +334,21 @@ with tab2:
 
     st.write("----------------------------------------------------------------------------------")
     st.write("**Windows parameters**")
+    st.session_state.window_param = st.session_state.df.loc[st.session_state.building_no, "window_param"]
     win_param = st.radio("Type of known windows parameters", ["Basic", "Advanced"],
+                         key='window_param', on_change=save_values, args=("window_param",),
                          help="When basic option is selected some of the parameters will be automatically generated as typicall values. Choose advanced option if all parameters are known.")
     col3, col4 = st.columns(2)
     with col3:
+        st.session_state.window_area = st.session_state.df.loc[st.session_state.building_no, "window_area"]
         use_case.window_area = st.number_input("Window area [m²]", min_value=0, max_value=None, value=20,
+                                               key='window_area', on_change=save_values, args=("window_area",),
                                                help="Area of the Glazed Surface in contact with the outside.")
 
     with col4:
-        use_case.U_windows = st.number_input("U value of glazed surfaces of windows [W/m²K]", min_value=0.0,
+        st.session_state.U_window = st.session_state.df.loc[st.session_state.building_no, "U_window"]
+        use_case.U_window = st.number_input("U value of glazed surfaces of windows [W/m²K]", min_value=0.0,
+                                             key='U_window', on_change=save_values, args=("U_window",),
                                              max_value=None, value=1.1)
 
     if win_param == "Basic":
@@ -332,12 +364,17 @@ with tab2:
                  use_case.windows_tilt, "°.")
 
     if win_param == "Advanced":
+        st.session_state.south_window_area = st.session_state.df.loc[st.session_state.building_no, "south_window_area"]
         use_case.south_window_area = st.number_input("South window area [m²]", min_value=0, max_value=None, value=10,
+                                                     key='south_window_area', on_change=save_values, args=("south_window_area",),
                                                      help="Area of windows facing the south.")
+        st.session_state.south_window_azimuth = st.session_state.df.loc[st.session_state.building_no, "south_window_azimuth"]
         use_case.south_window_azimuth = st.number_input("Azimuth of south windows [°]", min_value=-90, max_value=90,
-                                                        value=0,
+                                                        value=0, key='south_window_azimuth', on_change=save_values, args=("south_window_azimuth",),
                                                         help="The azimuth, or orientation, is the angle of the windows relative to the direction due South. - 90° is East, 0° is South and 90° is West.")
+        st.session_state.windows_tilt = st.session_state.df.loc[st.session_state.building_no, "windows_tilt"]
         use_case.windows_tilt = st.number_input("Inclination/slope [°]", min_value=0, max_value=90, value=90,
+                                                key='windows_tilt', on_change=save_values, args=("windows_tilt",),
                                                 help="Angle of the south windows from the horizontal plane")
 
 with tab3:
@@ -384,13 +421,24 @@ with tab5:
             icon="⚠️")
 
 run_button = st.sidebar.button('Calculate profiles')
+progress_bar = st.sidebar.progress(0)
 if run_button:
-    use_case.calculation(type_of_family)
-    created_profiles_bool = True
-
+    building = st.session_state.number_buildings
+    if len(st.session_state.df)==building:
+        for i in range(1,building+1):
+            #print("data",st.session_state.df.loc[i])
+            use_case.house_type=st.session_state.df.loc[i, "type_of_family"]
+            use_case.com_build_on=st.session_state.df.loc[i, "type_building"]
+            use_case.calculation_BH()
+            progress_bar.progress(int(i*100.0/building))
+        created_profiles_bool = True
+        progress_bar.progress(100)
+    else:
+        st.sidebar.warning("All Houses/Buildings are not populated")
 with tab6:
     if created_profiles_bool:
         dates = np.arange(0, 24, 0.25)
+        print(use_case.dailyResults)
         use_case.dailyResults.index = dates
         use_case.dailyResults.index.names = ['Time']
         profil1 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='SpringGreen').encode(
