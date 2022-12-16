@@ -153,7 +153,7 @@ else:
             st.write("Estimated building volume from walls area is:", use_case.volume_building)
             use_case.ach_vent = 0.35
             st.write("Fraction of air mass exchanged through ventilation. Currently selected value is:", use_case.ach_vent)
-            use_case.ventilation_efficiendy = 0.6
+            use_case.ventilation_efficiency = 0.6
             st.write("The efficiency of the heat recovery system for ventilation: 0 if there is no heat recovery, 1 if heat recovery is 100% effective. Currently selected value is:", use_case.ach_vent)
             use_case.thermal_capacitance = 165000
             st.write("Thermal capacitance of the room [J/m²K]. Currently selected value is:", use_case.thermal_capacitance)
@@ -162,7 +162,7 @@ else:
             use_case.floor_area = st.number_input("Floor area [m²]", min_value=0, max_value=None, value=500)
             use_case.volume_building = st.number_input("Building volume [m³]", min_value=0, max_value=None, value=400)
             use_case.ach_vent =  st.number_input("Fraction of air mass exchanged through ventilation", min_value=0.0, max_value=1.0, value=0.35, help = "Fraction of air changed per hour through ventilation, 0.35 means approx. one third of air volume is changed in a hour.")
-            use_case.ventilation_efficiendy = st.number_input("Ventilation efficiency", min_value=0.0, max_value=1.0, value=0.6, help = "The efficiency of the heat recovery system for ventilation. Set to 0 if there is no heat recovery, 1 means heat recovery is 100% effective, no losses from ventilation.")
+            use_case.ventilation_efficiency = st.number_input("Ventilation efficiency", min_value=0.0, max_value=1.0, value=0.6, help = "The efficiency of the heat recovery system for ventilation. Set to 0 if there is no heat recovery, 1 means heat recovery is 100% effective, no losses from ventilation.")
             thermal_capacitances = [80000, 110000, 165000, 260000, 370000]
             use_case.thermal_capacitance = st.selectbox("Thermal capacitance [J/m²K]", thermal_capacitances, help = "Thermal capacitance of the room. Very light: 80 000, Light: 110 000,  Medium: 165 000, Heavy: 260 000, Very heavy: 370 000", index = 2)
 

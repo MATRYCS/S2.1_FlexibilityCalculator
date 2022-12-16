@@ -51,11 +51,24 @@ def save_values(value):
         st.session_state.df.loc[st.session_state.building_no, 'office_start'] = st.session_state.office_start
     elif value == 'office_end':
         st.session_state.df.loc[st.session_state.building_no, 'office_end'] = st.session_state.office_end
+    elif value == 'room_param':
+        st.session_state.df.loc[st.session_state.building_no, 'room_param'] = st.session_state.room_param
     elif value == 'walls':
         st.session_state.df.loc[st.session_state.building_no, 'walls'] = st.session_state.walls
     elif value == 'U_walls':
         st.session_state.df.loc[st.session_state.building_no, 'U_walls'] = st.session_state.U_walls
-
+    elif value == 'T_set':
+        st.session_state.df.loc[st.session_state.building_no, 'T_set'] = st.session_state.T_set
+    elif value == 'floor_area':
+        st.session_state.df.loc[st.session_state.building_no, 'floor_area'] = st.session_state.floor_area
+    elif value == 'volume_building':
+        st.session_state.df.loc[st.session_state.building_no, 'volume_building'] = st.session_state.volume_building
+    elif value == 'ach_vent':
+        st.session_state.df.loc[st.session_state.building_no, 'ach_vent'] = st.session_state.ach_vent
+    elif value == 'vent_eff':
+        st.session_state.df.loc[st.session_state.building_no, 'vent_eff'] = st.session_state.vent_eff
+    elif value == 'thermal_cap':
+        st.session_state.df.loc[st.session_state.building_no, 'thermal_cap'] = st.session_state.thermal_cap
     print("Saving state:", st.session_state.df)
 
 
@@ -72,24 +85,37 @@ if 'df' not in st.session_state:
                                                 'peak_P': pd.Series(dtype='int'),
                                                 'office_start': pd.Series(dtype='int'),
                                                 'office_end': pd.Series(dtype='int'),
+                                                'room_param': pd.Series(dtype='str'),
                                                 'walls': pd.Series(dtype='int'),
                                                 'U_walls': pd.Series(dtype='float'),
-
+                                                'T_set': pd.Series(dtype='int'),
+                                                'floor_area': pd.Series(dtype='int'),
+                                                'volume_building': pd.Series(dtype='int'),
+                                                'ach_vent': pd.Series(dtype='float'),
+                                                'vent_eff': pd.Series(dtype='float'),
+                                                'thermal_cap': pd.Series(dtype='int'),
                                                 },
     )
     # initialize all values
-    st.session_state.df.loc[1] = ['private house', "Single worker",  "Air conditioner", 3000,  "Heat pump", 2000,
-                                  1000, 5000, 9, 17, 500, 0.2 ]
+    st.session_state.df.loc[1] = ['private house', 'Single worker',  'Air conditioner', 3000,  'Heat pump', 2000,
+                                  1000, 5000, 9, 17, 'Basic',  500, 0.2, 20, 500, 400, 0.35, 0.6, 165000 ]
     st.session_state.radio_BH = 'private house'
-    st.session_state.family = "Single worker"
-    st.session_state.cooling_type = "Air conditioner"
+    st.session_state.family = 'Single worker'
+    st.session_state.cooling_type = 'Air conditioner'
     st.session_state.cooling_P = 2000
-    st.session_state.heating_type = "Heat pump"
+    st.session_state.heating_type = 'Heat pump'
     st.session_state.heating_P = 3000
     st.session_state.background_P = 1000
     st.session_state.peak_P = 5000
+    st.session_state.room_param = 'Basic'
     st.session_state.office_start = 9
     st.session_state.office_end = 17
+    st.session_state.T_set = 20
+    st.session_state.floor_area = 500
+    st.session_state.volume_building = 400
+    st.session_state.ach_vent = 0.35
+    st.session_state.vent_eff = 0.6
+    st.session_state.thermal_cap = 165000
 
 use_case = profilegenerator2.profilgenerator2()
 
@@ -142,8 +168,8 @@ with tab2:
                                        help="Used to scroll through individual building perameters.")
     # initialize all values
     if st.session_state.building_no not in st.session_state.df.index:
-        st.session_state.df.loc[st.session_state.building_no] = ['private house', "Single worker", "Air conditioner", 3000, "Heat pump", 2000,
-                                                                    1000, 5000, 9, 17, 500, 0.2]
+        st.session_state.df.loc[st.session_state.building_no] = ['private house', 'Single worker', 'Air conditioner', 3000, 'Heat pump', 2000,
+                                                                    1000, 5000, 9, 17, 'Basic', 500, 0.2, 20, 500, 400, 0.35, 0.6, 165000]
     b_types = ['private house', 'commercial building']
     # for a proper refreshing you have to change the state of the radio button before you call it!
     # also the variable must be defined first before you call it! During the creation of the radio button
@@ -212,7 +238,9 @@ with tab2:
     st.write("----------------------------------------------------------------------------------")
 
     st.write("**Rooms parameters**")
+    st.session_state.room_param = st.session_state.df.loc[st.session_state.building_no, "room_param"]
     room_param = st.radio("Type of known rooms parameters", ["Basic", "Advanced"],
+                          key='room_param', on_change=save_values, args=("room_param",),
                           help="When basic option is selected some of the parameters will be automatically generated as typicall values. Choose advanced option if all parameters are known.")
     col5, col6 = st.columns(2)
     with col5:
@@ -225,8 +253,9 @@ with tab2:
         st.session_state.U_walls = st.session_state.df.loc[st.session_state.building_no, "U_walls"]
         use_case.U_walls = st.number_input("U value of facade [W/m²K]", min_value=0.0, max_value=None, value=0.2,
                                            key='U_walls', on_change=save_values, args =("U_walls",),)
-
+    st.session_state.T_set = st.session_state.df.loc[st.session_state.building_no, "T_set"]
     use_case.t_set = st.number_input("Room temperature [°]", min_value=15, max_value=30, value=20,
+                                     key='T_set', on_change=save_values, args=("T_set",),
                                      help="Set the desired room temperature.")
 
     if room_param == "Basic":
@@ -248,7 +277,7 @@ with tab2:
         st.write("Estimated building volume from walls area is:", use_case.volume_building)
         use_case.ach_vent = 0.35
         st.write("Fraction of air mass exchanged through ventilation. Currently selected value is:", use_case.ach_vent)
-        use_case.ventilation_efficiendy = 0.6
+        use_case.ventilation_efficiency = 0.6
         st.write(
             "The efficiency of the heat recovery system for ventilation: 0 if there is no heat recovery, 1 if heat recovery is 100% effective. Currently selected value is:",
             use_case.ach_vent)
@@ -256,16 +285,24 @@ with tab2:
         st.write("Thermal capacitance of the room [J/m²K]. Currently selected value is:", use_case.thermal_capacitance)
 
     if room_param == "Advanced":
-        use_case.floor_area = st.number_input("Floor area [m²]", min_value=0, max_value=None, value=500)
-        use_case.volume_building = st.number_input("Building volume [m³]", min_value=0, max_value=None, value=400)
+        st.session_state.floor_area = st.session_state.df.loc[st.session_state.building_no, "floor_area"]
+        use_case.floor_area = st.number_input("Floor area [m²]", min_value=0, max_value=None, value=500,
+                                              key='floor_area', on_change=save_values, args=("floor_area",),)
+        st.session_state.volume_building = st.session_state.df.loc[st.session_state.building_no, "volume_building"]
+        use_case.volume_building = st.number_input("Building volume [m³]", min_value=0, max_value=None, value=400,
+                                                   key='volume_building', on_change=save_values, args=("volume_building",),)
+        st.session_state.ach_vent = st.session_state.df.loc[st.session_state.building_no, "ach_vent"]
         use_case.ach_vent = st.number_input("Fraction of air mass exchanged through ventilation", min_value=0.0,
-                                            max_value=1.0, value=0.35,
+                                            max_value=1.0, value=0.35, key='ach_vent', on_change=save_values, args=("ach_vent",),
                                             help="Fraction of air changed per hour through ventilation, 0.35 means approx. one third of air volume is changed in a hour.")
-        use_case.ventilation_efficiendy = st.number_input("Ventilation efficiency", min_value=0.0, max_value=1.0,
-                                                          value=0.6,
+        st.session_state.vent_eff = st.session_state.df.loc[st.session_state.building_no, "vent_eff"]
+        use_case.ventilation_efficiency = st.number_input("Ventilation efficiency", min_value=0.0, max_value=1.0,
+                                                          value=0.6, key='vent_eff', on_change=save_values, args=("vent_eff",),
                                                           help="The efficiency of the heat recovery system for ventilation. Set to 0 if there is no heat recovery, 1 means heat recovery is 100% effective, no losses from ventilation.")
         thermal_capacitances = [80000, 110000, 165000, 260000, 370000]
+        st.session_state.thermal_cap = st.session_state.df.loc[st.session_state.building_no, "thermal_cap"]
         use_case.thermal_capacitance = st.selectbox("Thermal capacitance [J/m²K]", thermal_capacitances,
+                                                    key='thermal_cap', on_change=save_values, args=("thermal_cap",),
                                                     help="Thermal capacitance of the room. Very light: 80 000, Light: 110 000,  Medium: 165 000, Heavy: 260 000, Very heavy: 370 000",
                                                     index=2)
 
