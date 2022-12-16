@@ -197,7 +197,7 @@ else:
             type_of_family = st.selectbox("Type of household", types_of_family)
 
         else:
-            type_of_family = st.selectbox("Type of household", types_of_family)
+            type_of_family = "Single worker"
             st.write("**Commercial**")
             use_case.background_consumption = st.number_input("Background power [W]", min_value=0, max_value=None, value=1000, help = "Consumption of all appliances in the building that can not be turned off [W].")
             use_case.peak_consumption = st.number_input("Peak power [W]", min_value=0, max_value=None, value=5000, help = "Peak consumption when all employees are present in their workplace [W].")
