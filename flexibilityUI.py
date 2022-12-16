@@ -57,7 +57,7 @@ if st.sidebar.checkbox('Battery'):
 st.title("Matrycs - Catalogue service")
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
-    ["🗺️Map", "📃Building thermal profile", "📃User profile", "📃PV", "📃EV", "📃Battery", "📈Profiles", "	📊Flexibility"])
+    ["🗺️Map", "📃Building thermal profile", "📃User profile", "📃PV", "📃EV", "📃Battery", "📈Profiles", "📊Flexibility"])
 with tab1:
     st.map(map_data)
 
@@ -186,7 +186,7 @@ with tab3:
         type_of_family = st.selectbox("Type of household", types_of_family)
 
     else:
-        type_of_family = st.selectbox("Type of household", types_of_family)
+        type_of_family = "Single worker"
         st.write("**Commercial**")
         use_case.background_consumption = st.number_input("Background power [W]", min_value=0, max_value=None,
                                                           value=1000,
