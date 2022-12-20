@@ -21,7 +21,7 @@ class House_types(object):
                  longitude=14.4,
                  timezone='Europe/Ljubljana'
                  ):
-        self.startDay = startDay  # Initial day #only 1 or 2 (1 weekend-holiday / 2 work day )
+        self.startDay = startDay  # Initial day #only 0 or 1 (0 weekend-holiday / 1 work day )
         self.latitude = latitude
         self.longitude = longitude
         self.timezone = timezone
@@ -33,15 +33,6 @@ class House_types(object):
         # Penetration of emerging technology in percentages
         # all values must be between 0-100
         # These indicate what percentage of the houses has a certain device
-
-        # Electric mobility, restriction that the sum <= 100
-        # Note, households with larger driving distances will receive EVs first
-        self.penetrationEV = 100
-        self.penetrationPHEV = 0
-
-        # we are using PVGIS therefore it needs to be 0
-        self.penetrationPV = 0
-        self.penetrationBattery = 0  # Note only houses with PV will receive a battery!
 
         # We are using RC-SIMULATOR therefore 0
         self.penetrationHeatPump = 0
@@ -68,22 +59,22 @@ class House_types(object):
         print(house_type)
         # types_of_family = ["Single worker", "Single jobless", "Single part-time", "Couple", "Dual worker", "Family dual parent", "Family dual worker", "Family single parent", "Dual retired", "Single retired"]
         if house_type == "Single worker":
-            self.householdList.append(households.HouseholdSingleWorker())
+            self.householdList.append(households.HouseholdSingleWorker(startDay=self.startDay))
         elif house_type == "Single jobless":
-            self.householdList.append(households.HouseholdSingleJobless())
+            self.householdList.append(households.HouseholdSingleJobless(startDay=self.startDay))
         elif house_type == "Single part-time":
-            self.householdList.append(households.HouseholdSingleParttime())
+            self.householdList.append(households.HouseholdSingleParttime(startDay=self.startDay))
         elif house_type == "Couple":
-            self.householdList.append(households.HouseholdCouple())
+            self.householdList.append(households.HouseholdCouple(startDay=self.startDay))
         elif house_type == "Dual worker":
-            self.householdList.append(households.HouseholdDualWorker())
+            self.householdList.append(households.HouseholdDualWorker(startDay=self.startDay))
         elif house_type == "Family dual parent":
             self.householdList.append(households.HouseholdFamilyDualParent(parttime=False, jobless=False, startDay=self.startDay))
         elif house_type == "Family dual worker":
-            self.householdList.append(households.HouseholdFamilyDualWorker())
+            self.householdList.append(households.HouseholdFamilyDualWorker(startDay=self.startDay))
         elif house_type == "Family single parent":
-            self.householdList.append(households.HouseholdFamilySingleParent())
+            self.householdList.append(households.HouseholdFamilySingleParent(startDay=self.startDay))
         elif house_type == "Dual retired":
-            self.householdList.append(households.HouseholdDualRetired())
+            self.householdList.append(households.HouseholdDualRetired(startDay=self.startDay))
         else:  # "Single retired"
-            self.householdList.append(households.HouseholdSingleRetired())
+            self.householdList.append(households.HouseholdSingleRetired(startDay=self.startDay))

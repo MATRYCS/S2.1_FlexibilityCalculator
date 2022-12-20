@@ -32,10 +32,6 @@ PVAzimuthSigma = 90  # degrees
 PVEfficiencyMin = 15  # % of theoretical max
 PVEfficiencyMax = 20  # % of theoretical max
 
-# Driving distances
-commuteDistanceMean = 25  # km
-commuteDistanceSigma = 10  # km
-
 # Battery
 capacityBatteryLarge = 12000  # Wh
 capacityBatteryMedium = 5000  # Wh
@@ -88,6 +84,9 @@ class Household:
     def __init__(self,startDay=1):
         self.generate()
         self.startDay = startDay
+        # Driving distances
+        self.commuteDistanceMean = 25 # km
+        self.commuteDistanceSigma = 10  # km
         
     def generate(self):
         #The Yearly consumption is the normal consumption of domestic appliances as found for years in households. This excludes: 
@@ -304,7 +303,6 @@ class Household:
     def simulate(self):        
         for day in range(self.startDay, numDays+self.startDay):
             dayOfWeek = day%7
-            
             #Select occupancy profiles for each person
             self.OccupancyPersonsDay = [0] * 1440
             self.OccupancyAdultsDay = [0] * 1440
@@ -462,8 +460,9 @@ class HouseholdSingleWorker(Household):
         #Average commute distance is not too clear from multiple sources, such as the once above. Something around 20km seems to be average in most sources
         #However 30 is also mentioned: http://www.nederlandheeftwerk.nl/index.php/cms_categorie/58707/bb/1/id/58707
         #Depends also on the region and work in vicinity.
-        
-        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(commuteDistanceMean, commuteDistanceSigma))))
+        print(self.commuteDistanceMean)
+        print(random.gauss(self.commuteDistanceMean, self.commuteDistanceSigma))
+        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(self.commuteDistanceMean, self.commuteDistanceSigma))))
             
         if(random.randint(1,2) == 1):
             self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeBigMin,ConsumptionFridgeBigMax)) ]
@@ -565,7 +564,7 @@ class HouseholdCouple(Household):
             self.Persons = [ persons.PersonWorker(age), persons.PersonWorker(age)]
         
         #To make life easy, only one persons.Person will use the electric vehicle, so only the main persons.Person will receive a driving distance
-        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(commuteDistanceMean, commuteDistanceSigma))))
+        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(self.commuteDistanceMean, self.commuteDistanceSigma))))
         
         if(random.randint(1,2) == 1):
             self.Fridges = [ devices.DeviceFridge(random.randint(ConsumptionFridgeBigMin,ConsumptionFridgeBigMax)) ]
@@ -606,7 +605,7 @@ class HouseholdFamilyDualParent(Household):
             self.Persons.append(copy.deepcopy(self.Persons[0]))  #Make a copy, we expect a household to be rather synchronized!
             
         #To make life easy, only one persons.Person will use the electric vehicle, so only the main persons.Person will receive a driving distance
-        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(commuteDistanceMean, commuteDistanceSigma))))
+        self.Persons[0].setDistanceToWork(round(max(0, random.gauss(self.commuteDistanceMean, self.commuteDistanceSigma))))
                 
         #now add the kids
         for i in range(0,numKids):
@@ -647,7 +646,7 @@ class HouseholdFamilySingleParent(Household):
             
         if not jobless:
             #To make life easy, only one persons.Person will use the electric vehicle, so only the main persons.Person will receive a driving distance
-            self.Persons[0].setDistanceToWork(round(max(0, random.gauss(commuteDistanceMean, commuteDistanceSigma))))
+            self.Persons[0].setDistanceToWork(round(max(0, random.gauss(self.commuteDistanceMean, self.commuteDistanceSigma))))
                 
         #now add the kids
         for i in range(0,numKids):

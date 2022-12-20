@@ -3,7 +3,10 @@
 Created on Wed Aug 31 07:44:06 2022
 
 @authors: Andrej Campa, Denis Sodin
+
+TODO:EV penetration
 """
+import random
 
 import streamlit as st
 import pandas as pd
@@ -154,10 +157,10 @@ types_of_day = ["Workday", "Weekend"]
 type_of_day = st.sidebar.selectbox("Weekend or workday", types_of_day, key='weekend')
 use_case.weekend = types_of_day.index(type_of_day)
 # st.sidebar.write("month is", m)
-use_case.latitude = st.sidebar.number_input("Latitude [°]", min_value=-90.0, max_value=90.0, value=46.05, format=None,
-                                            help="Geographical latitude, initial value set for Ljubljana/Slovenia")
-use_case.longitude = st.sidebar.number_input("Longitude [°]", min_value=-180.0, max_value=180.0, value=14.51,
-                                             format=None,
+use_case.latitude = st.sidebar.number_input("Latitude [°]", min_value=-90.0, max_value=90.0, value=46.050, format="%.4f",
+                                            help="Geographical latitude, initial value set for Ljubljana/Slovenia", step = 0.0001)
+use_case.longitude = st.sidebar.number_input("Longitude [°]", min_value=-180.0, max_value=180.0, value=14.510,
+                                             format="%.4f", step = 0.0001,
                                              help="Geographical longitude, initial value set for Ljubljana/Slovenia")
 
 data = np.array([[use_case.latitude, use_case.longitude]])
@@ -394,17 +397,23 @@ with tab3:
             icon="⚠️")
 
 with tab4:
-    if com_build_on == 'private house':
-        use_case.EV_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None,
-                                               value=12.0) * 1000
-        use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7) * 1000
+    st.write("**Households settings**")
+    penetration_EV = st.number_input("Penetration of EVs into housholds [%]", min_value=0, max_value=100,
+                                           value=50)
+    use_case.EV_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None,
+                                           value=12.0) * 1000
+    use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7) * 1000
+    commute_distance_EV = st.number_input("Average commute distance done by vehicle [km]", min_value=0, max_value=None,
+                                  value=25,
+                                  help="Average daily distance of EV vehicles, you can estimate the total distance divided by the number of vehicles")
 
-    else:
-        number_of_cars = st.number_input("Number of vehicles:", min_value=0, max_value=None, value=1,
-                                         help="Total number of all EV vehicles in the fleet.")
-        distance_EV = st.number_input("Average daily distance done by vehicle [km]", min_value=0, max_value=None,
-                                      value=20,
-                                      help="Average daily distance of EV vehicles, you can estimate the total distance divided by the number of vehicles")
+    st.write("----------------------------------------------------------------------------------")
+    st.write("**Commercial fleet**")
+    number_of_cars = st.number_input("Number of vehicles:", min_value=0, max_value=None, value=1,
+                                     help="Total number of all EV vehicles in the fleet.")
+    distance_EV = st.number_input("Average daily distance done by vehicle [km]", min_value=0, max_value=None,
+                                  value=20,
+                                  help="Average daily distance of EV vehicles, you can estimate the total distance divided by the number of vehicles")
 
 with tab5:
     if battery_on:
@@ -424,44 +433,70 @@ run_button = st.sidebar.button('Calculate profiles')
 progress_bar = st.sidebar.progress(0)
 if run_button:
     building = st.session_state.number_buildings
-    if len(st.session_state.df)==building:
+    print(building,len(st.session_state.df))
+    if len(st.session_state.df)>=building:
         for i in range(1,building+1):
-            #print("data",st.session_state.df.loc[i])
+            # load all parameters relevant for specific house
+            use_case.com_build_on = st.session_state.df.loc[i, "type_building"]
             use_case.house_type=st.session_state.df.loc[i, "type_of_family"]
-            use_case.com_build_on=st.session_state.df.loc[i, "type_building"]
-            use_case.calculation_BH()
+            use_case.cooling_type = cool_types.index(st.session_state.df.loc[i,'cooling_type']) + 1
+            use_case.heating_type = heat_types.index(st.session_state.df.loc[i,'heating_type']) + 1
+            use_case.background_consumption = st.session_state.df.loc[i, "background_P"]
+            use_case.peak_consumption = st.session_state.df.loc[i, "peak_P"]
+            use_case.office_start_t = st.session_state.df.loc[i, "office_start"]*60
+            use_case.office_end_t = st.session_state.df.loc[i, "office_end"]*60
+            use_case.walls_area = st.session_state.df.loc[i, "walls"]
+            use_case.U_walls = st.session_state.df.loc[i, "U_walls"]
+            use_case.t_set = st.session_state.df.loc[i, "T_set"]
+            use_case.floor_area = st.session_state.df.loc[i, "floor_area"]
+            use_case.volume_building = st.session_state.df.loc[i, "volume_building"]
+            use_case.ach_vent = st.session_state.df.loc[i, "ach_vent"]
+            use_case.ventilation_efficiency = st.session_state.df.loc[i, "vent_eff"]
+            use_case.thermal_capacitance = st.session_state.df.loc[i, "thermal_cap"]
+            use_case.window_area = st.session_state.df.loc[i, "window_area"]
+            use_case.U_window = st.session_state.df.loc[i, "U_window"]
+            use_case.south_window_area = st.session_state.df.loc[i, "south_window_area"]
+            use_case.south_window_azimuth = st.session_state.df.loc[i, "south_window_azimuth"]
+            use_case.windows_tilt = st.session_state.df.loc[i, "windows_tilt"]
+            use_case.hasEV = random.random() <= penetration_EV/100.0
+            use_case.commute_distance_EV = commute_distance_EV
+            if i == 1:
+                st.session_state.df_results=use_case.calculation_BH()
+            else:
+                st.session_state.df_results=st.session_state.df_results+use_case.calculation_BH()
             progress_bar.progress(int(i*100.0/building))
         created_profiles_bool = True
+        st.session_state.df_results["OutsideTemp"] = st.session_state.df_results["OutsideTemp"] / building
         progress_bar.progress(100)
     else:
         st.sidebar.warning("All Houses/Buildings are not populated")
 with tab6:
     if created_profiles_bool:
         dates = np.arange(0, 24, 0.25)
-        print(use_case.dailyResults)
-        use_case.dailyResults.index = dates
-        use_case.dailyResults.index.names = ['Time']
-        profil1 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='SpringGreen').encode(
+        #print(use_case.dailyResults)
+        st.session_state.df_results.index = dates
+        st.session_state.df_results.index.names = ['Time']
+        profil1 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='SpringGreen').encode(
             x='Time',
             y='Photovoltaic',
         )
-        profil2 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='black').encode(
+        profil2 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='black').encode(
             x='Time',
             y='ConsumptionHouse'
         )
         # using one chart just to define legend and axis!!!!
-        settings = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='black').encode(
+        settings = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='black').encode(
             x=alt.X('Time', title="Time [h]"),
             y=alt.Y('ConsumptionHouse', title="Power[W]"),  # we set x and y label only in one chart
             # by setting colors we can define legend for all profiles
             color=alt.Color('Color:N', scale=alt.Scale(range=['SpringGreen', 'black', 'blue', 'brown'],
                                                        domain=['PV', 'Consumption house', 'EV', 'Commercial building']))
         )
-        profil3 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='blue').encode(
+        profil3 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='blue').encode(
             x='Time',
             y='ElectricVehicle'
         )
-        profil4 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='brown', strokeDash=[15, 15]).encode(
+        profil4 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='brown', strokeDash=[15, 15]).encode(
             x='Time',
             y='BusinessBuildingProfile'
         )
@@ -470,11 +505,11 @@ with tab6:
 
         # second graph
         resize = alt.selection_interval(bind='scales')
-        profil2_1 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='red').encode(
+        profil2_1 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='red').encode(
             x=alt.X('Time', title='Time [h]'),
             y=alt.Y('HeatingDemand', axis=alt.Axis(title='Power [W]', titleColor='red', tickCount=4))
         )
-        profil2_2 = alt.Chart(use_case.dailyResults.reset_index()).mark_line(color='green').encode(
+        profil2_2 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='green').encode(
             x='Time',
             y=alt.Y('OutsideTemp', axis=alt.Axis(title='Outside temperature [°C]', titleColor='green'))
         ).add_selection(resize)
@@ -487,13 +522,13 @@ with tab7:
     if created_profiles_bool:
         st.write("**Energy needs of the house for a typical day in**", month)
         if com_build_on == 'private house':
-            el_kWh = np.sum(use_case.consumption_total_resampled) / 4000.0
+            el_kWh = np.sum(st.session_state.df_results["ConsumptionHouse"]) / 4000.0
         else:
-            el_kWh = np.sum(use_case.bus_profile) / 4000.0
+            el_kWh = np.sum(st.session_state.df_results["BusinessBuildingProfile"]) / 4000.0
         HVAC_kWh = 0
         AC_kWh = 0
         EV_kWh = 0
-        PV_total = np.sum(np.abs(use_case.PVpower)) / 4000.0
+        PV_total = np.sum(np.abs(st.session_state.df_results["Photovoltaic"])) / 4000.0
         if PV_on is False:
             PV_total = 0
         for en in use_case.list_of_energies_HVAC:
@@ -504,7 +539,7 @@ with tab7:
 
         if EV_on:
             if com_build_on == 'private house':
-                EV_kWh = np.sum(np.abs(use_case.charging_profile)) / 4000.0
+                EV_kWh = np.sum(np.abs(st.session_state.df_results["ElectricVehicle"])) / 4000.0
             else:
                 # No_cars * distance/100km * 16 kWh, 16 kWh per 100km
                 EV_kWh = number_of_cars * (distance_EV / 100) * 16
