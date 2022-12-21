@@ -526,11 +526,10 @@ class profilgenerator2(object):
 
             #print("Household " + str(hnum + 1) + " of " + str(numOfHouseholds), flush=True)
             householdList[0].hasEV = self.hasEV
-            householdList[0].commuteDistanceMean = self.commute_distance_EV
 
             householdList[0].Devices['ElectricalVehicle'].BufferCapacity = self.EV_capacity  # .capacityEV
             householdList[0].Devices['ElectricalVehicle'].Consumption = self.EV_power  # powerEV
-
+            householdList[0].Persons[0].setDistanceToWork(round(max(0, random.gauss(self.commute_distance_EV, self.commute_distance_EV/4))))
             householdList[0].simulate()
 
             # Warning: On my PC the random number is still the same at this point, but after calling scaleProfile() it isn't!!!

@@ -401,7 +401,7 @@ with tab4:
     penetration_EV = st.number_input("Penetration of EVs into housholds [%]", min_value=0, max_value=100,
                                            value=50)
     use_case.EV_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None,
-                                           value=12.0) * 1000
+                                           value=40.0, help="The battery must be large enough to cover the entire commute. Otherwise, depending on the size of the battery, only part of the distance will be considered!") * 1000
     use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7) * 1000
     commute_distance_EV = st.number_input("Average commute distance done by vehicle [km]", min_value=0, max_value=None,
                                   value=25,
