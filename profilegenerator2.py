@@ -14,12 +14,12 @@ print(use_case.tiltPV)
 # for building part
 import sys
 import os
-import numpy as np
-import pandas as pd
 import random
 import json
 import requests
-import importlib
+import numpy as np
+import pandas as pd
+#import importlib
 
 sys.path.append('./configs')
 import houses_matrycs
@@ -39,8 +39,10 @@ cfgOutputDir = 'output'
 cfgFile = 'houses_matrycs'
 
 
-class profilgenerator2(object):
-
+class profilgenerator2():
+    """
+    alpg library modified to class
+    """
 
     def __init__(self,
                  month=1, # month of the year 1-January
@@ -129,6 +131,7 @@ class profilgenerator2(object):
         self.consumption_total_resampled = np.zeros(96)
         self.hasEV = hasEV
         self.commute_distance_EV = commute_distance_EV
+        self.df_el=[]
 
     # we use default COP (coefficient of performance) curve from here as reference
     # https://tisto.eu/images/thumbnails/1376/1126/detailed/5/toplotna-crpalka-zrak-voda-18-6-kw-monoblok-400-v-25-c-r407c-5025-tisto.png
@@ -265,12 +268,12 @@ class profilgenerator2(object):
                 EV_list = EV_string.split(",")
                 EV_endTimes = [int(x) - offset for x in EV_list]
 
-        with open(r'output/ElectricVehicle_Specs.txt', "r") as datafile:
-            file = (datafile.read().split())  # read file in 1 list
-            for spec in file:
-                specs = spec.split(":")[1]
-                capacity = float(specs.split(",")[0])  # battery capacity
-                charge_power = float(specs.split(",")[1])
+        #with open(r'output/ElectricVehicle_Specs.txt', "r") as datafile:
+        #    file = (datafile.read().split())  # read file in 1 list
+        #    for spec in file:
+        #        specs = spec.split(":")[1]
+        #        capacity = float(specs.split(",")[0])  # battery capacity
+        #        charge_power = float(specs.split(",")[1])
 
         with open(r'output/ElectricVehicle_RequiredCharge.txt', "r") as datafile:
             file = (datafile.read().split())  # read file in 1 list
@@ -283,7 +286,7 @@ class profilgenerator2(object):
             #print("EV file is empty")
         else:
             for i in range(len(EV_startTimes)):
-                charge_time = round(charge / charge_power * 60.0 / 15.0)
+                charge_time = round(charge / self.EV_power * 60.0 / 15.0)
                 # print("charge time is" , charge_time)
                 starting_charging_moment = random.randint(EV_startTimes[i], EV_endTimes[i] - charge_time)
                 if starting_charging_moment >= 1440:
@@ -294,7 +297,7 @@ class profilgenerator2(object):
                 while charge_time > 0:
                     if starting_charging_moment + count >= 96:  # if you charge over midnight you need to subtract 1 day
                         starting_charging_moment -= 96
-                    charging_profile[starting_charging_moment + count] = charge_power
+                    charging_profile[starting_charging_moment + count] = self.EV_power
                     # print(count+starting_charging_moment)
                     count += 1
                     charge_time -= 1
@@ -306,7 +309,7 @@ class profilgenerator2(object):
         else:
             startDay = 1
         offset = startDay * 24 * 60  # how far off you start
-        endTime = (startDay + 1) * 24 * 60  # calculate the last minute of the interval
+        #endTime = (startDay + 1) * 24 * 60  # calculate the last minute of the interval
         interval = 15  # define the interval of resampled values in minutes
 
         washMachine = "on"  # decide whether to account for washing machines and dishwashers or not, "on" includes them anything else ignores them
@@ -399,7 +402,8 @@ class profilgenerator2(object):
         df = pd.read_csv(r'output/Electricity_Profile.csv', sep=";",
                          header=None)  # read the csv file (put 'r' before the path string to address any special characters in the path, such as '\'). Don't forget to put the file name at the end of the path + ".csv"
         df = df.astype(float)  # pretvori dataframe v float, drugače dela z integerji
-
+        # to calculate gains from electric consumers without dishwasher and
+        self.df_el = df
         header = []
         for i in range(df.shape[1]):  # generiraj številko householda/userja in jo dodaj v header
             header.append(str(i))
@@ -429,8 +433,6 @@ class profilgenerator2(object):
             for user in range(df.shape[1]):
                 try:
                     for startT in globals()['WashingMachine{}'.format(user)]:
-                        #print("startT = ", startT)
-                        #print('adding WashingMachine profile to user', user)
                         count = 0
                         for currentP in washMachineProfile:
                             if count + startT - offset >= 1440:
@@ -481,6 +483,13 @@ class profilgenerator2(object):
         :return: daily results: profiles for one Building House
         :rtype: dataframe
         """
+        self.HeatingDemand =  np.zeros(96)
+        self.OutsideTemp = np.zeros(96)
+        self.SolarGains = np.zeros(96)
+        self.charging_profile = np.zeros(96)
+        self.bus_profile = np.zeros(96)
+        self.PVpower = np.zeros(96)
+        self.consumption_total_resampled = np.zeros(96)
 
         # remove all old outputs from file
         diro = 'output'
@@ -491,9 +500,9 @@ class profilgenerator2(object):
         self.PVdata = self.getPVprofile(m=self.month, latitude=self.latitude, longitude=self.longitude,
                                         surface_tilt=self.tiltPV, surface_azimuth=self.azimuthPV)
         temperature = self.PVdata["T2m"]
-        irradiance = self.PVdata["G(i)"]  # global irradiance on a fixed plane
-        direct = self.PVdata["Gb(i)"]  # Direct irradiance on a fixed plane
-        difuse = self.PVdata["Gd(i)"]  # diffuse irradiance on a fixed plane
+        #irradiance = self.PVdata["G(i)"]  # global irradiance on a fixed plane
+        #direct = self.PVdata["Gb(i)"]  # Direct irradiance on a fixed plane
+        #difuse = self.PVdata["Gd(i)"]  # diffuse irradiance on a fixed plane
 
         ################################
         #### Load profile generator ####
@@ -508,8 +517,6 @@ class profilgenerator2(object):
             config.calculation(self.house_type)
             # print(config.EV)
             print('Loading config: ' + cfgFile, flush=True)
-            print("The current config will create and simulate " + str(len(config.householdList)) + " households",
-                  flush=True)
             print("Results will be written into: " + cfgOutputDir + "\n", flush=True)
             print("NOTE: Simulation may take a (long) while...\n", flush=True)
 
@@ -518,51 +525,45 @@ class profilgenerator2(object):
 
             hnum = 0
 
-            householdList = config.householdList
-            #print("this is householdlist", householdList)
-            numOfHouseholds = len(householdList)
+            house = config.house
 
-            # original script iterates through alpg houses here, we only take 1 representative house
+            house.hasEV = self.hasEV
 
-            #print("Household " + str(hnum + 1) + " of " + str(numOfHouseholds), flush=True)
-            householdList[0].hasEV = self.hasEV
-
-            householdList[0].Devices['ElectricalVehicle'].BufferCapacity = self.EV_capacity  # .capacityEV
-            householdList[0].Devices['ElectricalVehicle'].Consumption = self.EV_power  # powerEV
-            householdList[0].Persons[0].setDistanceToWork(round(max(0, random.gauss(self.commute_distance_EV, self.commute_distance_EV/4))))
-            householdList[0].simulate()
+            house.Devices['ElectricalVehicle'].BufferCapacity = self.EV_capacity  # .capacityEV
+            house.Devices['ElectricalVehicle'].Consumption = self.EV_power  # powerEV
+            house.Persons[0].setDistanceToWork(round(max(0, random.gauss(self.commute_distance_EV, self.commute_distance_EV/4))))
+            house.simulate()
 
             # Warning: On my PC the random number is still the same at this point, but after calling scaleProfile() it isn't!!!
-            householdList[0].scaleProfile()
-            householdList[0].reactivePowerProfile()
-            householdList[0].thermalGainProfile()
+            house.scaleProfile()
+            house.reactivePowerProfile()
+            house.thermalGainProfile()
 
-            writer.writeHousehold(householdList[0], hnum)
+            writer.writeHousehold(house, hnum)
 
-            globals()['PersonGain{}'.format(hnum + 1)] = householdList[0].HeatGain["PersonGain"]
-            globals()['Consumption{}'.format(hnum + 1)] = householdList[0].Consumption["Total"]
+            globals()['PersonGain{}'.format(hnum + 1)] = house.HeatGain["PersonGain"]
+            globals()['Consumption{}'.format(hnum + 1)] = house.Consumption["Total"]
 
             # building
             # Empty Lists for Storing Data to Plot
             ElectricityOut = []
             self.HeatingDemand = []  # Energy required by the zone
-            HeatingEnergy = []  # Energy required by the supply system to provide HeatingDemand
-            CoolingEnergy = []  # Energy required by the supply system to get rid of CoolingDemand
-            IndoorAir = []
+            #HeatingEnergy = []  # Energy required by the supply system to provide HeatingDemand
+            #CoolingEnergy = []  # Energy required by the supply system to get rid of CoolingDemand
+            #IndoorAir = []
             self.OutsideTemp = []
             self.SolarGains = []
-            COP = []
+            #COP = []
 
             # 1440 everyminute
             gain_per_person = globals()['PersonGain{}'.format(hnum + 1)]  # W per person
-            gain_per_person = np.interp(np.arange(0, len(gain_per_person), 15), np.arange(0, len(gain_per_person), 1),
-                                        gain_per_person)
-            # electric appliance gain 40% to heat
+
+            # mean of power is more correct to interpolation
+            gain_per_person = np.mean(np.reshape(gain_per_person, (-1,15)),axis=1)
+
+             # electrical appliances contribute 40% heat without dishwasher and washing machine most hot water is thrown away!
             gain_consumption = globals()['Consumption{}'.format(hnum + 1)]
-            gain_per_person += 0.4 * np.interp(np.arange(0, len(gain_consumption), 15),
-                                               np.arange(0, len(gain_consumption), 1), gain_consumption)
-            # print("internal gains")
-            # print(np.sum(gain_per_person)/4)
+            gain_per_person += 0.4 * np.mean(np.reshape(gain_consumption, (-1,15)),axis=1)
             self.resample()
 
             self.consumption_total_resampled = self.df_new["agregated"]

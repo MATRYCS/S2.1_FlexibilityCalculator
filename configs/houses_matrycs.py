@@ -53,28 +53,29 @@ class House_types(object):
         location1.latitude = self.latitude
         location1.longitude = self.longitude
         location1.timezone = self.timezone
-        self.householdList = []
+        #self.householdList = []
+        self.house = []
         # Select the types of households
         # typical family house
         print(house_type)
         # types_of_family = ["Single worker", "Single jobless", "Single part-time", "Couple", "Dual worker", "Family dual parent", "Family dual worker", "Family single parent", "Dual retired", "Single retired"]
         if house_type == "Single worker":
-            self.householdList.append(households.HouseholdSingleWorker(startDay=self.startDay))
+            self.house=households.HouseholdSingleWorker(startDay=self.startDay)
         elif house_type == "Single jobless":
-            self.householdList.append(households.HouseholdSingleJobless(startDay=self.startDay))
+            self.house=households.HouseholdSingleJobless(startDay=self.startDay)
         elif house_type == "Single part-time":
-            self.householdList.append(households.HouseholdSingleParttime(startDay=self.startDay))
+            self.house = households.HouseholdSingleParttime(startDay=self.startDay)
         elif house_type == "Couple":
-            self.householdList.append(households.HouseholdCouple(startDay=self.startDay))
+            self.house = households.HouseholdCouple(startDay=self.startDay)
         elif house_type == "Dual worker":
-            self.householdList.append(households.HouseholdDualWorker(startDay=self.startDay))
+            self.house = households.HouseholdDualWorker(startDay=self.startDay)
         elif house_type == "Family dual parent":
-            self.householdList.append(households.HouseholdFamilyDualParent(parttime=False, jobless=False, startDay=self.startDay))
+            self.house = households.HouseholdFamilyDualParent(parttime=False, jobless=False, startDay=self.startDay)
         elif house_type == "Family dual worker":
-            self.householdList.append(households.HouseholdFamilyDualWorker(startDay=self.startDay))
+            self.house = households.HouseholdFamilyDualWorker(startDay=self.startDay)
         elif house_type == "Family single parent":
-            self.householdList.append(households.HouseholdFamilySingleParent(startDay=self.startDay))
+            self.house = households.HouseholdFamilySingleParent(startDay=self.startDay)
         elif house_type == "Dual retired":
-            self.householdList.append(households.HouseholdDualRetired(startDay=self.startDay))
+            self.house = households.HouseholdDualRetired(startDay=self.startDay)
         else:  # "Single retired"
-            self.householdList.append(households.HouseholdSingleRetired(startDay=self.startDay))
+            self.house = households.HouseholdSingleRetired(startDay=self.startDay)
