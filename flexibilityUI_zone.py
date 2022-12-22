@@ -396,12 +396,15 @@ with tab3:
             icon="⚠️")
 
 with tab4:
+    st.write("**Typical EV characteristic in zone**")
+    use_case.EV_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None,
+                                           value=40.0,
+                                           help="The battery must be large enough to cover the entire commute. Otherwise, depending on the size of the battery, only part of the distance will be considered!") * 1000
+    use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7) * 1000
+    st.write("----------------------------------------------------------------------------------")
     st.write("**Households settings**")
     penetration_EV = st.number_input("Penetration of EVs into housholds [%]", min_value=0, max_value=100,
                                            value=50)
-    use_case.EV_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None,
-                                           value=40.0, help="The battery must be large enough to cover the entire commute. Otherwise, depending on the size of the battery, only part of the distance will be considered!") * 1000
-    use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7) * 1000
     commute_distance_EV = st.number_input("Average one-way commute distance done by EV [km]", min_value=0, max_value=None,
                                   value=25,
                                   help="Average daily distance of EV vehicles, you can estimate the total distance divided by the number of vehicles")
@@ -465,9 +468,13 @@ if run_button:
             else:
                 st.session_state.df_results=st.session_state.df_results+use_case.calculation_BH()
             progress_bar.progress(int(i*100.0/building))
+        progress_bar.progress(100)
+        print(st.session_state.df_results)
+        st.session_state.df_results["Business_EV"]=use_case.business_EV_profile(number_of_cars,distance_EV).tolist()
+        print(st.session_state.df_results)
         created_profiles_bool = True
         st.session_state.df_results["OutsideTemp"] = st.session_state.df_results["OutsideTemp"] / building
-        progress_bar.progress(100)
+
     else:
         st.sidebar.warning("All Houses/Buildings are not populated")
 with tab6:
@@ -489,8 +496,8 @@ with tab6:
             x=alt.X('Time', title="Time [h]"),
             y=alt.Y('ConsumptionHouse', title="Power[W]"),  # we set x and y label only in one chart
             # by setting colors we can define legend for all profiles
-            color=alt.Color('Color:N', scale=alt.Scale(range=['SpringGreen', 'black', 'blue', 'brown'],
-                                                       domain=['PV', 'Consumption house', 'EV', 'Commercial building']))
+            color=alt.Color('Color:N', scale=alt.Scale(range=['SpringGreen', 'black', 'blue', 'brown', 'red'],
+                                                       domain=['PV', 'Consumption house', 'EV households', 'Commercial building', 'EV commercial fleet']))
         )
         profil3 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='blue').encode(
             x='Time',
@@ -500,7 +507,11 @@ with tab6:
             x='Time',
             y='BusinessBuildingProfile'
         )
-        profiles = alt.layer(profil1, profil2, profil3, profil4, settings).properties(title='Electric profiles')
+        profil5 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='red', strokeDash=[15, 15]).encode(
+            x='Time',
+            y='Business_EV'
+        )
+        profiles = alt.layer(profil1, profil2, profil3, profil4, profil5, settings).properties(title='Electric profiles')
         st.altair_chart(profiles.configure_axis().interactive(), use_container_width=True)
 
         # second graph

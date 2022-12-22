@@ -677,3 +677,26 @@ class profilgenerator2():
         })
         return self.dailyResults
 
+    def business_EV_profile(self,no_EVs,distance):
+        EVprofile = np.zeros(96)
+        for i in range(no_EVs):
+            EVenergy = random.gauss(18, 2)*1000 # ranodmize EV efficiency 18kW per 100 km
+            distance_rand = random.gauss(distance, distance/4) # randomize distance
+            diff = self.office_end_t - self.office_start_t
+            # EV charging during office hourse, but more to the second half
+            starting_time = int(random.gauss(self.office_start_t+2.0*diff/3.0, diff/3.0)/15)
+            if starting_time > 95:
+                starting_time -= 96
+            Energy_needed = distance_rand/100.0*EVenergy
+            while Energy_needed > 0:
+                Energy_needed -= self.EV_power/4  # divided by 4 due to 15min interval
+                if Energy_needed<0:
+                    EVprofile[starting_time] += (self.EV_power/4 + Energy_needed) * 4
+                else:
+                    EVprofile[starting_time] += self.EV_power
+                starting_time += 1
+                if starting_time > 95:
+                    starting_time = 0
+        return EVprofile
+
+
