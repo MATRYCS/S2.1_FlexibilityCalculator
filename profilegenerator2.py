@@ -700,3 +700,11 @@ class profilgenerator2():
         return EVprofile
 
 
+    def calculation_PV(self):
+        self.PVdata = self.getPVprofile(m=self.month, latitude=self.latitude, longitude=self.longitude,
+                                        surface_tilt=self.tiltPV, surface_azimuth=self.azimuthPV)
+        temperature = self.PVdata["T2m"]
+        irradiance = self.PVdata["G(i)"]  # global irradiance on a fixed plane
+        PV_power=self.solar_power_taking_account_temperature(temperature,irradiance,Wp=self.PV_nominal_power)
+        self.PVpower = [i for i in PV_power] # make list without timestamp
+        return self.PVpower

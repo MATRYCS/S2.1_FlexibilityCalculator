@@ -4,7 +4,8 @@ Created on Wed Aug 31 07:44:06 2022
 
 @authors: Andrej Campa, Denis Sodin
 
-TODO:EV penetration
+TODO: EV penetration
+TODO: Heating in final tab, sumarize according to house!!!!
 """
 import random
 
@@ -15,12 +16,9 @@ import matplotlib.pyplot as plt
 import profilegenerator2
 import altair as alt
 
-PV_on = False
-EV_on = False
 com_build_on = False
 number_of_cars = 1
 distance_EV = 0
-battery_on = False
 created_profiles_bool = False
 
 
@@ -152,8 +150,8 @@ months = ["January", "February", "March", "April", "May", "June", "July", "Augus
           "December"]
 month = st.sidebar.selectbox("Month of the year", months, key="month")
 use_case.month = months.index(month) + 1
-types_of_day = ["Workday", "Weekend"]
-type_of_day = st.sidebar.selectbox("Weekend or workday", types_of_day, key='weekend')
+types_of_day = ["Workday", "Weekend/Holiday"]
+type_of_day = st.sidebar.selectbox("Day of the week", types_of_day, key='weekend')
 use_case.weekend = types_of_day.index(type_of_day)
 # st.sidebar.write("month is", m)
 use_case.latitude = st.sidebar.number_input("Latitude [°]", min_value=-90.0, max_value=90.0, value=46.050, format="%.4f",
@@ -165,17 +163,6 @@ use_case.longitude = st.sidebar.number_input("Longitude [°]", min_value=-180.0,
 data = np.array([[use_case.latitude, use_case.longitude]])
 
 map_data = pd.DataFrame(data, columns=["lat", "lon"])
-
-st.sidebar.write("Select assets included in profile generation")
-
-if st.sidebar.checkbox('Photovoltaics'):
-    PV_on = True
-
-if st.sidebar.checkbox('Electric Vehicle'):
-    EV_on = True
-
-if st.sidebar.checkbox('Battery'):
-    battery_on = True
 
 st.title("Matrycs - Catalogue service")
 
@@ -380,20 +367,14 @@ with tab2:
                                                 help="Angle of the south windows from the horizontal plane")
 
 with tab3:
-    if PV_on:
-        st.header("Parameters")
-        use_case.PV_nominal_power = st.number_input("Installed peak power of the PV [kWp]", min_value=0.0,
-                                                    max_value=None, value=5.0, format=None) * 1000
-        use_case.tiltPV = st.number_input("Inclination/slope [°]", min_value=0, max_value=90, value=30, format=None,
-                                          help="Angle of the PV modules from the horizontal plane")
-        use_case.azimuthPV = st.number_input("Azimuth [°]", min_value=-180.0, max_value=180.0, value=0.0, step=0.1,
-                                             format=None,
+    st.header("Parameters")
+    use_case.PV_nominal_power = st.number_input("Installed peak power of the PV [kWp]", min_value=0.0,
+                                                max_value=None, value=5.0, format=None) * 1000
+    use_case.tiltPV = st.number_input("Inclination/slope [°]", min_value=0, max_value=90, value=30, format=None,
+                                      help="Angle of the PV modules from the horizontal plane")
+    use_case.azimuthPV = st.number_input("Azimuth [°]", min_value=-180.0, max_value=180.0, value=0.0, step=0.1,
+                                         format=None,
                                              help="The azimuth, or orientation, is the angle of the PV modules relative to the direction due South. - 90° is East, 0° is South and 90° is West.")
-    else:
-        # st.write("Check the photovoltaic checkbox in order to access its parameters!")
-        st.warning(
-            'Photovoltaic asset is not selected under general parameters! Please check its checkbox in order to access parameters.',
-            icon="⚠️")
 
 with tab4:
     st.write("**Typical EV characteristic in zone**")
@@ -418,18 +399,14 @@ with tab4:
                                   help="Average daily distance of EV vehicles, you can estimate the total distance divided by the number of vehicles")
 
 with tab5:
-    if battery_on:
-        use_case.bat_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=15.0,
-                                                step=0.1, )
-        use_case.bat_power = st.number_input("Peak (dis)charging power [kW]", min_value=0.0, max_value=None, value=5.0,
-                                             step=0.1, )
-        use_case.bat_efficiency = st.number_input("Charging efficiency [%]", min_value=0.0, max_value=100.0, value=90.0,
+
+    use_case.bat_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=15.0,
+                                            step=0.1, )
+    use_case.bat_power = st.number_input("Peak (dis)charging power [kW]", min_value=0.0, max_value=None, value=5.0,
+                                         step=0.1, )
+    use_case.bat_efficiency = st.number_input("Charging efficiency [%]", min_value=0.0, max_value=100.0, value=90.0,
                                                   help="Efficiency of battery charging/discharging.") / 100
-    else:
-        # st.write("Check the battery checkbox in order to access its parameters!")
-        st.warning(
-            'Battery asset is not selected under general parameters! Please check its checkbox in order to access parameters.',
-            icon="⚠️")
+
 
 run_button = st.sidebar.button('Calculate profiles')
 progress_bar = st.sidebar.progress(0)
@@ -470,11 +447,14 @@ if run_button:
             progress_bar.progress(int(i*100.0/building))
         progress_bar.progress(100)
         print(st.session_state.df_results)
-        st.session_state.df_results["Business_EV"]=use_case.business_EV_profile(number_of_cars,distance_EV).tolist()
+        st.session_state.df_results["Business_EV"] = use_case.business_EV_profile(number_of_cars,distance_EV).tolist()
         print(st.session_state.df_results)
         created_profiles_bool = True
         st.session_state.df_results["OutsideTemp"] = st.session_state.df_results["OutsideTemp"] / building
 
+        ## create PV calculation now is only for one PV
+
+        st.session_state.df_results["Photovoltaic"] = use_case.calculation_PV()
     else:
         st.sidebar.warning("All Houses/Buildings are not populated")
 with tab6:
@@ -496,8 +476,9 @@ with tab6:
             x=alt.X('Time', title="Time [h]"),
             y=alt.Y('ConsumptionHouse', title="Power[W]"),  # we set x and y label only in one chart
             # by setting colors we can define legend for all profiles
-            color=alt.Color('Color:N', scale=alt.Scale(range=['SpringGreen', 'black', 'blue', 'brown', 'red'],
-                                                       domain=['PV', 'Consumption house', 'EV households', 'Commercial building', 'EV commercial fleet']))
+            color=alt.Color('Colors:N', scale=alt.Scale(range=['SpringGreen', 'black', 'blue', 'brown', 'red'],
+                domain=['PV', 'Consumption house', 'EV households', 'Commercial building', 'EV commercial fleet']),
+                legend=alt.Legend(orient='bottom',titleAnchor='middle'))
         )
         profil3 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='blue').encode(
             x='Time',
@@ -540,20 +521,16 @@ with tab7:
         AC_kWh = 0
         EV_kWh = 0
         PV_total = np.sum(np.abs(st.session_state.df_results["Photovoltaic"])) / 4000.0
-        if PV_on is False:
-            PV_total = 0
         for en in use_case.list_of_energies_HVAC:
             if en > 0:
                 HVAC_kWh += en
             else:
                 AC_kWh -= en
 
-        if EV_on:
-            if com_build_on == 'private house':
-                EV_kWh = np.sum(np.abs(st.session_state.df_results["ElectricVehicle"])) / 4000.0
-            else:
-                # No_cars * distance/100km * 16 kWh, 16 kWh per 100km
-                EV_kWh = number_of_cars * (distance_EV / 100) * 16
+        EV_kWh_dom = np.sum(np.abs(st.session_state.df_results["ElectricVehicle"])) / 4000.0
+        # No_cars * distance/100km * 16 kWh, 16 kWh per 100km
+        EV_kWh_bus = number_of_cars * (distance_EV / 100) * 16
+        EV_kWh = EV_kWh_dom + EV_kWh_bus
         # *********************
         #     plot 1         *
         # *********************
@@ -726,21 +703,21 @@ with tab7:
             EV_start_time = np.rint(use_case.EV_startTimes[0] / 15)
             EV_end_time = np.rint(use_case.EV_endTimes[0] / 15)
             flexibility_EV = 0
-            if EV_on:
-                if com_build_on == 'private house':
-                    flexibility_EV = (EV_end_time - EV_start_time) / 96 * EV_kWh
-                    if EV_start_time > 95:
-                        EV_start_time -= 96
-                    if EV_end_time > 95:
-                        EV_end_time -= 96
-                else:
-                    flexibility_EV = EV_kWh
+
+            #TODO distinguish EV_kWh
+            flexibility_EV = (EV_end_time - EV_start_time) / 96 * EV_kWh_dom
+            if EV_start_time > 95:
+                EV_start_time -= 96
+            if EV_end_time > 95:
+                EV_end_time -= 96
+
+            flexibility_EV = flexibility_EV + EV_kWh_bus
         else:
             flexibility_EV = 0
 
         flexibility_HVAC = (energies_heating + energies_cooling) / 1000 / len(use_case.list_of_times_HVAC)
         flexibility_battery = 0
-        if battery_on:
+        if use_case.bat_capacity>0:
             flexibility_battery = use_case.bat_capacity * use_case.bat_efficiency
         fig3, ax3 = plt.subplots(1, 2, sharey=True)
         tets = ax3[0].bar("Total energy", (energies_heating + energies_cooling) / 1000, label='HVAC')
