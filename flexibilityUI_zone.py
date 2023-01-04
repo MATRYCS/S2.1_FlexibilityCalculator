@@ -6,6 +6,7 @@ Created on Wed Aug 31 07:44:06 2022
 
 TODO: EV penetration
 TODO: Heating in final tab, sumarize according to house!!!!
+TODO: Save/Load data use st.session_state
 """
 import random
 
@@ -32,6 +33,7 @@ def save_values(value):
     """
     # save state parameters!
     progress_bar.progress(0)
+    progress_bar_PV.progress(0)
     if value == 'radio_BH':
         st.session_state.df.loc[st.session_state.building_no,'type_building'] = st.session_state.radio_BH
     elif value == 'type_of_family':
@@ -84,6 +86,32 @@ def save_values(value):
         st.session_state.df.loc[st.session_state.building_no, 'windows_tilt'] = st.session_state.windows_tilt
     print("Saving state:", st.session_state.df)
 
+def save_values_PV(value):
+    """
+    Function that saves the state on each parameter change!
+    :param value: the changed value
+    :type value: string
+    :return: none
+    :rtype: none
+    """
+    # save state parameters!
+    progress_bar.progress(0)
+    progress_bar_PV.progress(0)
+    if value == 'Pn':
+        st.session_state.df_PV.loc[st.session_state.PV_no,'Pn'] = st.session_state.Pn
+    elif value == 'Inclination':
+        st.session_state.df_PV.loc[st.session_state.PV_no, 'Inclination'] = st.session_state.Inclination
+    elif value == 'Azimuth':
+        st.session_state.df_PV.loc[st.session_state.PV_no, 'Azimuth'] = st.session_state.Azimuth
+    print("Saving state:", st.session_state.df_PV)
+
+def up_file():
+    """
+    function to create state for file upload
+    :return: refreshed state
+    :rtype: int
+    """
+    st.session_state.file_state=1
 
 # define all possible states
 # dataframe for storing houses types, building envelope parameters and HVAC details
@@ -143,7 +171,32 @@ if 'df' not in st.session_state:
     st.session_state.south_window_azimuth = 0
     st.session_state.windows_tilt = 90
 
+if 'df_PV' not in st.session_state:
+    st.session_state.df_PV = pd.DataFrame(columns={'Pn': pd.Series(dtype='float'),
+                                                'Inclination': pd.Series(dtype='int'),
+                                                'Azimuth': pd.Series(dtype='float'),
+                                                },
+    )
+    st.session_state.df_PV.loc[1]=[5.0,30,0.0]
+    st.session_state.Pn = 5.0
+    st.session_state.Inclination = 30
+    st.session_state.Azimuth = 0
+
+if 'number_buildings_read' not in st.session_state:
+    st.session_state.number_buildings_read = 1
+if 'file_state' not in st.session_state:
+    st.session_state.file_state=0
+
 use_case = profilegenerator2.profilgenerator2()
+
+st.sidebar.write("**Project**")
+save_button = st.sidebar.download_button('Save project', data=st.session_state.df.to_csv())
+
+uploaded_file = st.sidebar.file_uploader("Open project",on_change=up_file)
+if uploaded_file is not None and st.session_state.file_state == 1:
+    st.session_state.df = pd.read_csv(uploaded_file, index_col=0)
+    st.session_state.number_buildings = len(st.session_state.df)
+    st.session_state.file_state=0
 
 st.sidebar.write("**General parameters**")
 months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November",
@@ -174,9 +227,11 @@ with tab1:
 with tab2:
     col1, col2, = st.columns(2)
     with col2:
-        st.session_state.number_buildings = st.number_input("Maximum number of buildings in zones",
-                                       min_value=1, max_value=None, value=1,
-                                       help="Specify the number of buildings in the zone.")
+        # due to race condition, reading at the end of file...
+        #st.session_state.number_buildings = st.session_state.number_buildings_read
+        #st.session_state.number_buildings_read = \
+        st.number_input("Maximum number of buildings in zones", min_value=1, max_value=None, value=1,
+                        key='number_buildings', help="Specify the number of buildings in the zone.")
     with col1:
         st.session_state.building_no = st.number_input("Selected building",
                                        min_value=1, max_value=st.session_state.number_buildings, value=1,
@@ -367,13 +422,35 @@ with tab2:
                                                 help="Angle of the south windows from the horizontal plane")
 
 with tab3:
+    col1, col2, = st.columns(2)
+    with col2:
+        st.session_state.number_PV = st.number_input("Number of PV systems",
+                                       min_value=1, max_value=None, value=1,
+                                       help="Specify number of different PV systems. For your convenience, you can "
+                                            "divide a system with different orientations into several systems. On the "
+                                            "other hand, you can also merge parts of different systems with the same "
+                                            "orientation.")
+    with col1:
+        st.session_state.PV_no = st.number_input("Selected PV plant",
+                                       min_value=1, max_value=st.session_state.number_PV, value=1,
+                                       help="Used to scroll through individual PV systems perameters.")
+
+        # initialize all values
+    if st.session_state.PV_no not in st.session_state.df_PV.index:
+        st.session_state.df_PV.loc[st.session_state.PV_no] = [5.0,30,0.0]
+
     st.header("Parameters")
-    use_case.PV_nominal_power = st.number_input("Installed peak power of the PV [kWp]", min_value=0.0,
-                                                max_value=None, value=5.0, format=None) * 1000
-    use_case.tiltPV = st.number_input("Inclination/slope [°]", min_value=0, max_value=90, value=30, format=None,
-                                      help="Angle of the PV modules from the horizontal plane")
+    st.session_state.Pn = st.session_state.df_PV.loc[st.session_state.PV_no,"Pn"]
+    use_case.PV_nominal_power = st.number_input("Installed peak power of the PV [kWp]", min_value=0.0, key='Pn',
+                                                max_value=None, value=5.0, format=None, on_change=save_values_PV, args=("Pn",),) * 1000
+
+    st.session_state.Inclination =  st.session_state.df_PV.loc[st.session_state.PV_no,"Inclination"]
+    use_case.tiltPV = st.number_input("Inclination/slope [°]", min_value=0, max_value=90, value=30, format=None, key='Inclination',
+                                      help="Angle of the PV modules from the horizontal plane",
+                                         on_change=save_values_PV, args=("Inclination",))
+    st.session_state.Azimuth = st.session_state.df_PV.loc[st.session_state.PV_no, "Azimuth"]
     use_case.azimuthPV = st.number_input("Azimuth [°]", min_value=-180.0, max_value=180.0, value=0.0, step=0.1,
-                                         format=None,
+                                         format=None, key='Azimuth', on_change=save_values_PV, args=("Azimuth",),
                                              help="The azimuth, or orientation, is the angle of the PV modules relative to the direction due South. - 90° is East, 0° is South and 90° is West.")
 
 with tab4:
@@ -409,11 +486,14 @@ with tab5:
 
 
 run_button = st.sidebar.button('Calculate profiles')
+st.sidebar.write("Buildings:")
 progress_bar = st.sidebar.progress(0)
+st.sidebar.write("PVs:")
+progress_bar_PV = st.sidebar.progress(0)
 if run_button:
     building = st.session_state.number_buildings
     #print(building,len(st.session_state.df))
-    if len(st.session_state.df)>=building:
+    if len(st.session_state.df) >= building:
         for i in range(1,building+1):
             # load all parameters relevant for specific house
             use_case.com_build_on = st.session_state.df.loc[i, "type_building"]
@@ -441,20 +521,30 @@ if run_button:
             use_case.hasEV = random.random() <= penetration_EV/100.0
             use_case.commute_distance_EV = commute_distance_EV
             if i == 1:
-                st.session_state.df_results=use_case.calculation_BH()
+                st.session_state.df_results = use_case.calculation_BH()
             else:
-                st.session_state.df_results=st.session_state.df_results+use_case.calculation_BH()
+                st.session_state.df_results = st.session_state.df_results+use_case.calculation_BH()
             progress_bar.progress(int(i*100.0/building))
-        progress_bar.progress(100)
         print(st.session_state.df_results)
         st.session_state.df_results["Business_EV"] = use_case.business_EV_profile(number_of_cars,distance_EV).tolist()
         print(st.session_state.df_results)
         created_profiles_bool = True
         st.session_state.df_results["OutsideTemp"] = st.session_state.df_results["OutsideTemp"] / building
+        progress_bar.progress(100)
 
-        ## create PV calculation now is only for one PV
+        PV = st.session_state.number_PV
+        if len(st.session_state.df_PV) >= PV:
+            for i in range(1, PV + 1):
+                use_case.PV_nominal_power = st.session_state.df_PV.loc[i,'Pn']*1000
+                use_case.tiltPV = st.session_state.df_PV.loc[i,'Inclination']
+                use_case.azimuthPV = st.session_state.df_PV.loc[i,'Azimuth']
+                if i == 1:
+                    st.session_state.df_results["Photovoltaic"] = use_case.calculation_PV()
+                else:
+                    st.session_state.df_results["Photovoltaic"] = st.session_state.df_results["Photovoltaic"] + use_case.calculation_PV()
+                progress_bar_PV.progress(int(i * 100.0 / PV))
+        progress_bar_PV.progress(100)
 
-        st.session_state.df_results["Photovoltaic"] = use_case.calculation_PV()
     else:
         st.sidebar.warning("All Houses/Buildings are not populated")
 with tab6:
