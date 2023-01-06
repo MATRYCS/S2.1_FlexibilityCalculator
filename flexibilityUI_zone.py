@@ -180,6 +180,11 @@ if 'df' not in st.session_state:
     st.session_state.commute_distance_EV = 25
     st.session_state.number_of_cars = 1
     st.session_state.distance_EV = 20
+    st.session_state.bat_capacity = 15.0
+    st.session_state.bat_power = 5.0
+    st.session_state.bat_efficiency = 90.0
+    st.session_state.latitude = 46.050
+    st.session_state.longitude = 14.510
 
 if 'df_PV' not in st.session_state:
     st.session_state.df_PV = pd.DataFrame(columns={'Pn': pd.Series(dtype='float'),
@@ -208,7 +213,12 @@ save_button = st.sidebar.download_button('Save project',
                                                           'penetration_EV': st.session_state.penetration_EV,
                                                           'commute_distance_EV': st.session_state.commute_distance_EV,
                                                           'number_of_cars':st.session_state.number_of_cars,
-                                                          'distance_EV':st.session_state.distance_EV
+                                                          'distance_EV':st.session_state.distance_EV,
+                                                          'bat_capacity':st.session_state.bat_capacity,
+                                                          'bat_power':st.session_state.bat_power,
+                                                          'bat_efficiency':st.session_state.bat_efficiency,
+                                                          'latitude':st.session_state.latitude,
+                                                          'longitude':st.session_state.longitude
                                                           }
                                                          ))
 
@@ -256,6 +266,11 @@ if uploaded_file is not None and st.session_state.file_state == 1:
     st.session_state.commute_distance_EV = int(dataobj['commute_distance_EV'])
     st.session_state.number_of_cars = int(dataobj['number_of_cars'])
     st.session_state.distance_EV = int(dataobj['distance_EV'])
+    st.session_state.bat_capacity = float(dataobj['bat_capacity'])
+    st.session_state.bat_power = float(dataobj['bat_power'])
+    st.session_state.bat_efficiency = float(dataobj['bat_efficiency'])
+    st.session_state.latitude = float(dataobj['latitude'])
+    st.session_state.longitude = float(dataobj['longitude'])
     st.session_state.file_state = 0
 
 st.sidebar.write("**General parameters**")
@@ -268,10 +283,10 @@ type_of_day = st.sidebar.selectbox("Day of the week", types_of_day, key='weekend
 use_case.weekend = types_of_day.index(type_of_day)
 # st.sidebar.write("month is", m)
 use_case.latitude = st.sidebar.number_input("Latitude [°]", min_value=-90.0, max_value=90.0, value=46.050, format="%.4f",
-                                            help="Geographical latitude, initial value set for Ljubljana/Slovenia", step = 0.0001)
+                                            help="Geographical latitude", step = 0.0001, key='latitude')
 use_case.longitude = st.sidebar.number_input("Longitude [°]", min_value=-180.0, max_value=180.0, value=14.510,
-                                             format="%.4f", step = 0.0001,
-                                             help="Geographical longitude, initial value set for Ljubljana/Slovenia")
+                                             format="%.4f", step = 0.0001, key='longitude',
+                                             help="Geographical longitude")
 
 data = np.array([[use_case.latitude, use_case.longitude]])
 
@@ -536,11 +551,11 @@ with tab4:
 with tab5:
 
     use_case.bat_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=15.0,
-                                            step=0.1, )
+                                            step=0.1, key='bat_capacity')
     use_case.bat_power = st.number_input("Peak (dis)charging power [kW]", min_value=0.0, max_value=None, value=5.0,
-                                         step=0.1, )
+                                         step=0.1, key='bat_power')
     use_case.bat_efficiency = st.number_input("Charging efficiency [%]", min_value=0.0, max_value=100.0, value=90.0,
-                                                  help="Efficiency of battery charging/discharging.") / 100
+                                                  help="Efficiency of battery charging/discharging.", key='bat_efficiency') / 100
 
 
 run_button = st.sidebar.button('Calculate profiles')
