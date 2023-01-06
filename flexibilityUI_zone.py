@@ -9,6 +9,10 @@ TODO: Heating in final tab, sumarize according to house!!!!
 TODO: Save/Load data use st.session_state
 """
 import random
+import json
+from io import StringIO
+import xmltodict
+
 
 import streamlit as st
 import pandas as pd
@@ -170,6 +174,12 @@ if 'df' not in st.session_state:
     st.session_state.south_window_area = 10
     st.session_state.south_window_azimuth = 0
     st.session_state.windows_tilt = 90
+    st.session_state.EV_capacity = 40.00
+    st.session_state.EV_power = 3.7
+    st.session_state.penetration_EV = 50
+    st.session_state.commute_distance_EV = 25
+    st.session_state.number_of_cars = 1
+    st.session_state.distance_EV = 20
 
 if 'df_PV' not in st.session_state:
     st.session_state.df_PV = pd.DataFrame(columns={'Pn': pd.Series(dtype='float'),
@@ -182,21 +192,71 @@ if 'df_PV' not in st.session_state:
     st.session_state.Inclination = 30
     st.session_state.Azimuth = 0
 
-if 'number_buildings_read' not in st.session_state:
-    st.session_state.number_buildings_read = 1
 if 'file_state' not in st.session_state:
-    st.session_state.file_state=0
+    st.session_state.file_state = 0
 
 use_case = profilegenerator2.profilgenerator2()
 
 st.sidebar.write("**Project**")
-save_button = st.sidebar.download_button('Save project', data=st.session_state.df.to_csv())
+
+# create one JSON object before saving!
+save_button = st.sidebar.download_button('Save project',
+                                         data=json.dumps({'df': st.session_state.df.to_dict(),
+                                                          'df_PV': st.session_state.df_PV.to_dict(),
+                                                          'EV_capacity': st.session_state.EV_capacity,
+                                                          'EV_power': st.session_state.EV_power,
+                                                          'penetration_EV': st.session_state.penetration_EV,
+                                                          'commute_distance_EV': st.session_state.commute_distance_EV,
+                                                          'number_of_cars':st.session_state.number_of_cars,
+                                                          'distance_EV':st.session_state.distance_EV
+                                                          }
+                                                         ))
 
 uploaded_file = st.sidebar.file_uploader("Open project",on_change=up_file)
 if uploaded_file is not None and st.session_state.file_state == 1:
-    st.session_state.df = pd.read_csv(uploaded_file, index_col=0)
+    dataobj = json.load(uploaded_file)
+    dataframe_from_dict = pd.DataFrame.from_dict(dataobj['df']).astype({'type_building':str,
+                                                'type_of_family': str,
+                                                'cooling_type': str,
+                                                'cooling_el_P': int,
+                                                'heating_type': str,
+                                                'heating_el_P': int,
+                                                'background_P': int,
+                                                'peak_P': int,
+                                                'office_start': int,
+                                                'office_end': int,
+                                                'room_param': str,
+                                                'walls': int,
+                                                'U_walls': float,
+                                                'T_set': int,
+                                                'floor_area': int,
+                                                'volume_building':int,
+                                                'ach_vent': float,
+                                                'vent_eff': float,
+                                                'thermal_cap': int,
+                                                'window_param': str,
+                                                'window_area': int,
+                                                'U_window': float,
+                                                'south_window_area': int,
+                                                'south_window_azimuth': int,
+                                                'windows_tilt': int})
+    dataframe_from_dict.index = dataframe_from_dict.index.astype('int64')
+    st.session_state.df = dataframe_from_dict
+    dataframe_from_dict = pd.DataFrame.from_dict(dataobj['df_PV']).astype({'Pn': float,
+                                                                        'Inclination': int,
+                                                                           'Azimuth':float
+                                                                        })
+    dataframe_from_dict.index = dataframe_from_dict.index.astype('int64')
+    st.session_state.df_PV = dataframe_from_dict
     st.session_state.number_buildings = len(st.session_state.df)
-    st.session_state.file_state=0
+    st.session_state.number_PV = len(st.session_state.df_PV)
+    st.session_state.EV_capacity = float(dataobj['EV_capacity'])
+    st.session_state.EV_power = float(dataobj['EV_power'])
+    st.session_state.penetration_EV = int(dataobj['penetration_EV'])
+    st.session_state.commute_distance_EV = int(dataobj['commute_distance_EV'])
+    st.session_state.number_of_cars = int(dataobj['number_of_cars'])
+    st.session_state.distance_EV = int(dataobj['distance_EV'])
+    st.session_state.file_state = 0
 
 st.sidebar.write("**General parameters**")
 months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November",
@@ -228,8 +288,6 @@ with tab2:
     col1, col2, = st.columns(2)
     with col2:
         # due to race condition, reading at the end of file...
-        #st.session_state.number_buildings = st.session_state.number_buildings_read
-        #st.session_state.number_buildings_read = \
         st.number_input("Maximum number of buildings in zones", min_value=1, max_value=None, value=1,
                         key='number_buildings', help="Specify the number of buildings in the zone.")
     with col1:
@@ -424,8 +482,8 @@ with tab2:
 with tab3:
     col1, col2, = st.columns(2)
     with col2:
-        st.session_state.number_PV = st.number_input("Number of PV systems",
-                                       min_value=1, max_value=None, value=1,
+        st.number_input("Number of PV systems",
+                                       min_value=1, max_value=None, value=1, key='number_PV',
                                        help="Specify number of different PV systems. For your convenience, you can "
                                             "divide a system with different orientations into several systems. On the "
                                             "other hand, you can also merge parts of different systems with the same "
@@ -456,23 +514,23 @@ with tab3:
 with tab4:
     st.write("**Typical EV characteristic in zone**")
     use_case.EV_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None,
-                                           value=40.0,
+                                           value=40.0, key='EV_capacity',
                                            help="The battery must be large enough to cover the entire commute. Otherwise, depending on the size of the battery, only part of the distance will be considered!") * 1000
-    use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7) * 1000
+    use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7, key='EV_power') * 1000
     st.write("----------------------------------------------------------------------------------")
     st.write("**Households settings**")
     penetration_EV = st.number_input("Penetration of EVs into housholds [%]", min_value=0, max_value=100,
-                                           value=50)
+                                           value=50,key='penetration_EV')
     commute_distance_EV = st.number_input("Average one-way commute distance done by EV [km]", min_value=0, max_value=None,
-                                  value=25,
+                                  value=25, key='commute_distance_EV',
                                   help="Average daily distance of EV vehicles, you can estimate the total distance divided by the number of vehicles")
 
     st.write("----------------------------------------------------------------------------------")
     st.write("**Commercial fleet**")
     number_of_cars = st.number_input("Number of vehicles:", min_value=0, max_value=None, value=1,
-                                     help="Total number of all EV vehicles in the fleet.")
+                                     help="Total number of all EV vehicles in the fleet.", key='number_of_cars')
     distance_EV = st.number_input("Average daily distance done by vehicle [km]", min_value=0, max_value=None,
-                                  value=20,
+                                  value=20, key='distance_EV',
                                   help="Average daily distance of EV vehicles, you can estimate the total distance divided by the number of vehicles")
 
 with tab5:
