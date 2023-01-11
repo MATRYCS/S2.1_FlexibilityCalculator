@@ -79,6 +79,8 @@ class profilgenerator2():
                  EV_power = 3000,  # [W] maks charging power
                  hasEV = True,
                  commute_distance_EV = 25,
+                 heating_el_P = 3000,
+                 cooling_el_P = 2000,
                  ):
         self.month = month
         self.latitude = latitude
@@ -131,7 +133,11 @@ class profilgenerator2():
         self.consumption_total_resampled = np.zeros(96)
         self.hasEV = hasEV
         self.commute_distance_EV = commute_distance_EV
-        self.df_el=[]
+        self.df_el = []
+        self.heating_el_P = heating_el_P
+        self.cooling_el_P = cooling_el_P
+        self.energies_heating = 0
+        self.energies_cooling = 0
 
     # we use default COP (coefficient of performance) curve from here as reference
     # https://tisto.eu/images/thumbnails/1376/1126/detailed/5/toplotna-crpalka-zrak-voda-18-6-kw-monoblok-400-v-25-c-r407c-5025-tisto.png
@@ -169,6 +175,100 @@ class profilgenerator2():
         if Cool_COP < 1:
             Cool_COP = 1.0
         return Cool_COP
+
+    def HVAC_el(self):
+        """
+        Calculates electric demand for heating/cooling
+        :return: Electric profile + total consumption
+                Energies cooling, energies heating
+        :rtype:
+        """
+        print("heating type", self.heating_type)
+        self.HVAC_kWh = 0
+        self.AC_kWh = 0
+        print(self.list_of_energies_HVAC)
+        for en in self.list_of_energies_HVAC:
+            if en > 0:
+                self.HVAC_kWh += en
+            else:
+                self.AC_kWh -= en
+        ###########
+        # Heating #
+        ###########
+        if self.heating_type == 1:
+            HVAC_energies = []
+            # calculates all energies that HVAC is able to produce at certain time in the day 15min timestamp (hence /4.0)
+            for x in range(96):
+                HVAC_energies.append(self.HVAC_COP(self.OutsideTemp[x]) * self.heating_el_P / 4.0)
+            print('HVAC', HVAC_energies)
+            # calculating HVAC energies
+            self.energies_heating = 0
+            for i in range(len(self.list_of_times_HVAC)):
+                t_start = self.list_of_times_HVAC[i - 1]
+                t_end = self.list_of_times_HVAC[i]
+                if len(self.list_of_times_HVAC) == 1:
+                    t_end = 96
+                    t_start = 1
+                delta = t_end - t_start
+                if delta < 0:
+                    delta += 96
+                # ordered energies for each timestamp, first calculate default value for time and after that optimal
+                energies_timestamp = np.roll(HVAC_energies, -t_start)[:delta]
+                # not optimized
+                list_en = self.list_of_energies_HVAC[i]
+                if list_en < 0:
+                    continue
+                for en in energies_timestamp:
+                    if en <= 0:
+                        break
+                    elif en < list_en:
+                        list_en -= en
+                        self.energies_heating += self.heating_el_P / 4.0
+                    else:  # only some leftovers
+                        self.energies_heating += (list_en / en) * self.heating_el_P / 4.0
+                        break
+
+        elif self.heating_type == 2:
+            self.energies_heating = self.HVAC_kWh
+        else:
+            self.energies_heating = 0
+
+        ###########
+        # Cooling #
+        ###########
+        if self.cooling_type == 1:
+            AC_energies = []
+            for x in range(96):
+                AC_energies.append(
+                    -self.airconditioner_COP(self.t_set, self.OutsideTemp[x]) * self.cooling_el_P / 4.0)
+            # calculating AC energies
+            self.energies_cooling = 0
+            for i in range(len(self.list_of_times_HVAC)):
+                t_start = self.list_of_times_HVAC[i - 1]
+                t_end = self.list_of_times_HVAC[i]
+                if len(self.list_of_times_HVAC) == 1:
+                    t_end = 96
+                    t_start = 1
+                delta = t_end - t_start
+                if delta < 0:
+                    delta += 96
+                # ordered energies for each timestamp, first calculate default value for time and after that optimal
+                energies_timestamp = np.roll(AC_energies, -t_start)[:delta]
+                # not optimized
+                list_en = self.list_of_energies_HVAC[i]
+                if list_en > 0:
+                    continue
+                for en in energies_timestamp:
+                    if en >= 0:
+                        break
+                    elif en > list_en:
+                        list_en -= en
+                        self.energies_cooling += self.cooling_el_P / 4.0
+                    else:  # only some leftovers
+                        self.energies_cooling += (list_en / en) * self.cooling_el_P / 4.0
+                        break
+        else:
+            self.energies_cooling = 0
 
 
     # business building
@@ -268,13 +368,6 @@ class profilgenerator2():
                 EV_list = EV_string.split(",")
                 EV_endTimes = [int(x) - offset for x in EV_list]
 
-        #with open(r'output/ElectricVehicle_Specs.txt', "r") as datafile:
-        #    file = (datafile.read().split())  # read file in 1 list
-        #    for spec in file:
-        #        specs = spec.split(":")[1]
-        #        capacity = float(specs.split(",")[0])  # battery capacity
-        #        charge_power = float(specs.split(",")[1])
-
         with open(r'output/ElectricVehicle_RequiredCharge.txt', "r") as datafile:
             file = (datafile.read().split())  # read file in 1 list
             for charge in file:
@@ -283,11 +376,9 @@ class profilgenerator2():
 
         if len(EV_startTimes) == 0:
             charging_profile = [0.0] * 96
-            #print("EV file is empty")
         else:
             for i in range(len(EV_startTimes)):
                 charge_time = round(charge / self.EV_power * 60.0 / 15.0)
-                # print("charge time is" , charge_time)
                 starting_charging_moment = random.randint(EV_startTimes[i], EV_endTimes[i] - charge_time)
                 if starting_charging_moment >= 1440:
                     starting_charging_moment -= 1440
@@ -298,7 +389,6 @@ class profilgenerator2():
                     if starting_charging_moment + count >= 96:  # if you charge over midnight you need to subtract 1 day
                         starting_charging_moment -= 96
                     charging_profile[starting_charging_moment + count] = self.EV_power
-                    # print(count+starting_charging_moment)
                     count += 1
                     charge_time -= 1
         return EV_startTimes, EV_endTimes, charging_profile
@@ -483,7 +573,10 @@ class profilgenerator2():
         :return: daily results: profiles for one Building House
         :rtype: dataframe
         """
-        self.HeatingDemand =  np.zeros(96)
+        self.HeatingDemand = np.zeros(96)
+        self.HeatingDemand = []
+        self.HeatingDemand_el = np.zeros(96)
+        self.HeatingDemand_el = []
         self.OutsideTemp = np.zeros(96)
         self.SolarGains = np.zeros(96)
         self.charging_profile = np.zeros(96)
@@ -500,9 +593,6 @@ class profilgenerator2():
         self.PVdata = self.getPVprofile(m=self.month, latitude=self.latitude, longitude=self.longitude,
                                         surface_tilt=self.tiltPV, surface_azimuth=self.azimuthPV)
         temperature = self.PVdata["T2m"]
-        #irradiance = self.PVdata["G(i)"]  # global irradiance on a fixed plane
-        #direct = self.PVdata["Gb(i)"]  # Direct irradiance on a fixed plane
-        #difuse = self.PVdata["Gd(i)"]  # diffuse irradiance on a fixed plane
 
         ################################
         #### Load profile generator ####
@@ -515,7 +605,6 @@ class profilgenerator2():
                 startDay = 1
             config.startDay = startDay
             config.calculation(self.house_type)
-            # print(config.EV)
             print('Loading config: ' + cfgFile, flush=True)
             print("Results will be written into: " + cfgOutputDir + "\n", flush=True)
             print("NOTE: Simulation may take a (long) while...\n", flush=True)
@@ -524,9 +613,7 @@ class profilgenerator2():
             writer.createEmptyFiles()
 
             hnum = 0
-
             house = config.house
-
             house.hasEV = self.hasEV
 
             house.Devices['ElectricalVehicle'].BufferCapacity = self.EV_capacity  # .capacityEV
@@ -547,13 +634,8 @@ class profilgenerator2():
             # building
             # Empty Lists for Storing Data to Plot
             ElectricityOut = []
-            self.HeatingDemand = []  # Energy required by the zone
-            #HeatingEnergy = []  # Energy required by the supply system to provide HeatingDemand
-            #CoolingEnergy = []  # Energy required by the supply system to get rid of CoolingDemand
-            #IndoorAir = []
             self.OutsideTemp = []
             self.SolarGains = []
-            #COP = []
 
             # 1440 everyminute
             gain_per_person = globals()['PersonGain{}'.format(hnum + 1)]  # W per person
@@ -600,7 +682,6 @@ class profilgenerator2():
         irradiance_south_diff = south_window["Gd(i)"]
 
         # Loop through  24*4 (15 min intervals) of the day
-        self.HeatingDemand = []
         self.OutsideTemp = []
         self.SolarGains = []
 
@@ -628,8 +709,6 @@ class profilgenerator2():
             self.HeatingDemand.append(house.heat_demand)
             self.OutsideTemp.append(t_out)
             self.SolarGains.append(house.solar_gains)
-
-
 
         ######################
         # Electric vehicle
@@ -660,14 +739,17 @@ class profilgenerator2():
                 sum_energy_needed += energy_limit
                 self.list_of_times_HVAC.append(hour)
                 self.list_of_energies_HVAC.append(-energy_limit)
-        # print(len(self.list_of_energies_HVAC))
         if ((sum_energy_needed < (0.4 * energy_limit)) & (len(self.list_of_energies_HVAC))):
             self.list_of_energies_HVAC[0] += sum_energy_needed
         else:
             self.list_of_times_HVAC.append(96)
             self.list_of_energies_HVAC.append(sum_energy_needed)
+
+        self.HVAC_el()
+
         self.dailyResults = pd.DataFrame({
             'HeatingDemand': self.HeatingDemand,
+            #'HeatingDemand_el' : self.HeatingDemand_el,
             'OutsideTemp': self.OutsideTemp,
             'SolarGains': self.SolarGains,
             'ElectricVehicle': self.charging_profile,

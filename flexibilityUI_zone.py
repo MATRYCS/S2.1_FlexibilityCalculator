@@ -6,13 +6,9 @@ Created on Wed Aug 31 07:44:06 2022
 
 TODO: EV penetration
 TODO: Heating in final tab, sumarize according to house!!!!
-TODO: Save/Load data use st.session_state
 """
 import random
 import json
-from io import StringIO
-import xmltodict
-
 
 import streamlit as st
 import pandas as pd
@@ -89,6 +85,18 @@ def save_values(value):
     elif value == 'windows_tilt':
         st.session_state.df.loc[st.session_state.building_no, 'windows_tilt'] = st.session_state.windows_tilt
     print("Saving state:", st.session_state.df)
+
+def df_change():
+    if len(st.session_state.df)+1 > st.session_state.number_buildings:
+        list_drop=np.arange(st.session_state.number_buildings + 1,st.session_state.df.index.max()+1)
+        print(list_drop)
+        st.session_state.df = st.session_state.df.drop(list_drop)
+
+def df_PV_change():
+    if len(st.session_state.df_PV)+1 > st.session_state.number_PV:
+        list_drop=np.arange(st.session_state.number_PV + 1,st.session_state.df_PV.index.max()+1)
+        print(list_drop)
+        st.session_state.df_PV = st.session_state.df_PV.drop(list_drop)
 
 def save_values_PV(value):
     """
@@ -281,10 +289,9 @@ use_case.month = months.index(month) + 1
 types_of_day = ["Workday", "Weekend/Holiday"]
 type_of_day = st.sidebar.selectbox("Day of the week", types_of_day, key='weekend')
 use_case.weekend = types_of_day.index(type_of_day)
-# st.sidebar.write("month is", m)
-use_case.latitude = st.sidebar.number_input("Latitude [°]", min_value=-90.0, max_value=90.0, value=46.050, format="%.4f",
+use_case.latitude = st.sidebar.number_input("Latitude [°]", min_value=-90.0, max_value=90.0, format="%.4f",
                                             help="Geographical latitude", step = 0.0001, key='latitude')
-use_case.longitude = st.sidebar.number_input("Longitude [°]", min_value=-180.0, max_value=180.0, value=14.510,
+use_case.longitude = st.sidebar.number_input("Longitude [°]", min_value=-180.0, max_value=180.0,
                                              format="%.4f", step = 0.0001, key='longitude',
                                              help="Geographical longitude")
 
@@ -304,7 +311,8 @@ with tab2:
     with col2:
         # due to race condition, reading at the end of file...
         st.number_input("Maximum number of buildings in zones", min_value=1, max_value=None, value=1,
-                        key='number_buildings', help="Specify the number of buildings in the zone.")
+                        key='number_buildings', help="Specify the number of buildings in the zone.",
+                                                     on_change=df_change)
     with col1:
         st.session_state.building_no = st.number_input("Selected building",
                                        min_value=1, max_value=st.session_state.number_buildings, value=1,
@@ -346,7 +354,6 @@ with tab2:
         use_case.office_start_t = st.selectbox("Starting hour of workday", start_hours, index=4, key='office_start', on_change=save_values, args =("office_start",)) * 60
         st.session_state.office_end = st.session_state.df.loc[st.session_state.building_no, "office_end"]
         use_case.office_end_t = st.selectbox("Ending hour of workday", end_hours, index=4,key='office_end', on_change=save_values, args =("office_end",) ) * 60
-        # office_hours=[start_workDay * 60, end_workDay * 60]
     st.write("----------------------------------------------------------------------------------")
     st.write("**Heating / cooling parameters**")
     heat_types = ["Heat pump", "Electric heater", "Other"]
@@ -367,14 +374,14 @@ with tab2:
     col1, col2, = st.columns(2)
     with col1:
         st.session_state.heating_P = st.session_state.df.loc[st.session_state.building_no, "heating_el_P"]
-        heating_el_P = st.number_input("Max electrical power of heating device [W]",
+        use_case.heating_el_P = st.number_input("Max electrical power of heating device [W]",
                                        min_value=0, max_value=None, value=3000, key='heating_P', on_change=save_values, args =("heating_P",),
                                        help="This is the el. power of the device in the case of HVAC, the COP "
                                             "(Coefficient Of Performance) number will increase the heating power of HVAC")
 
     with col2:
         st.session_state.cooling_P = st.session_state.df.loc[st.session_state.building_no, "cooling_el_P"]
-        cooling_el_P = st.number_input("Max electrical power of cooling device [W]",
+        use_case.cooling_el_P = st.number_input("Max electrical power of cooling device [W]",
                                        min_value=0, max_value=None, value=2000, key='cooling_P', on_change=save_values, args =("cooling_P",),
                                        help="This is the el. power of the device in case of air conditioning, the COP "
                                             "(Coefficient Of Performance) number will increase the cooling power")
@@ -498,7 +505,7 @@ with tab3:
     col1, col2, = st.columns(2)
     with col2:
         st.number_input("Number of PV systems",
-                                       min_value=1, max_value=None, value=1, key='number_PV',
+                                       min_value=1, max_value=None, value=1, key='number_PV', on_change=df_PV_change,
                                        help="Specify number of different PV systems. For your convenience, you can "
                                             "divide a system with different orientations into several systems. On the "
                                             "other hand, you can also merge parts of different systems with the same "
@@ -565,7 +572,10 @@ st.sidebar.write("PVs:")
 progress_bar_PV = st.sidebar.progress(0)
 if run_button:
     building = st.session_state.number_buildings
-    #print(building,len(st.session_state.df))
+    st.session_state.AC_kWh = 0
+    st.session_state.HVAC_kWh = 0
+    st.session_state.energies_heating = 0
+    st.session_state.energies_cooling = 0
     if len(st.session_state.df) >= building:
         for i in range(1,building+1):
             # load all parameters relevant for specific house
@@ -573,7 +583,9 @@ if run_button:
             print("type", use_case.com_build_on)
             use_case.house_type=st.session_state.df.loc[i, "type_of_family"]
             use_case.cooling_type = cool_types.index(st.session_state.df.loc[i,'cooling_type']) + 1
+            use_case.cooling_el_P = st.session_state.heating_P
             use_case.heating_type = heat_types.index(st.session_state.df.loc[i,'heating_type']) + 1
+            use_case.heating_el_P = st.session_state.cooling_P
             use_case.background_consumption = st.session_state.df.loc[i, "background_P"]
             use_case.peak_consumption = st.session_state.df.loc[i, "peak_P"]
             use_case.office_start_t = st.session_state.df.loc[i, "office_start"]*60
@@ -597,14 +609,20 @@ if run_button:
                 st.session_state.df_results = use_case.calculation_BH()
             else:
                 st.session_state.df_results = st.session_state.df_results+use_case.calculation_BH()
+            st.session_state.HVAC_kWh = st.session_state.HVAC_kWh + use_case.HVAC_kWh
+            st.session_state.AC_kWh = st.session_state.AC_kWh + use_case.AC_kWh
             progress_bar.progress(int(i*100.0/building))
+            st.session_state.energies_heating = st.session_state.energies_heating + use_case.energies_heating
+            st.session_state.energies_cooling = st.session_state.energies_cooling + use_case.energies_cooling
         print(st.session_state.df_results)
         st.session_state.df_results["Business_EV"] = use_case.business_EV_profile(number_of_cars,distance_EV).tolist()
         print(st.session_state.df_results)
         created_profiles_bool = True
         st.session_state.df_results["OutsideTemp"] = st.session_state.df_results["OutsideTemp"] / building
         progress_bar.progress(100)
-
+    else:
+        st.sidebar.warning("All Houses/Buildings are not populated!")
+    if len(st.session_state.df_PV) >= st.session_state.number_PV:
         PV = st.session_state.number_PV
         if len(st.session_state.df_PV) >= PV:
             for i in range(1, PV + 1):
@@ -617,13 +635,11 @@ if run_button:
                     st.session_state.df_results["Photovoltaic"] = st.session_state.df_results["Photovoltaic"] + use_case.calculation_PV()
                 progress_bar_PV.progress(int(i * 100.0 / PV))
         progress_bar_PV.progress(100)
-
     else:
-        st.sidebar.warning("All Houses/Buildings are not populated")
+        st.sidebar.warning("All PV systems are not defined!")
 with tab6:
     if created_profiles_bool:
         dates = np.arange(0, 24, 0.25)
-        #print(use_case.dailyResults)
         st.session_state.df_results.index = dates
         st.session_state.df_results.index.names = ['Time']
         profil1 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='SpringGreen').encode(
@@ -655,7 +671,7 @@ with tab6:
             x='Time',
             y='Business_EV'
         )
-        profiles = alt.layer(profil1, profil2, profil3, profil4, profil5, settings).properties(title='Electric profiles')
+        profiles = alt.layer(profil1, profil2, profil3, profil4, profil5, settings).properties(title='Electric profiles for zone')
         st.altair_chart(profiles.configure_axis().interactive(), use_container_width=True)
 
         # second graph
@@ -680,16 +696,8 @@ with tab7:
             el_kWh = np.sum(st.session_state.df_results["ConsumptionHouse"]) / 4000.0
         else:
             el_kWh = np.sum(st.session_state.df_results["BusinessBuildingProfile"]) / 4000.0
-        HVAC_kWh = 0
-        AC_kWh = 0
         EV_kWh = 0
-        PV_total = np.sum(np.abs(st.session_state.df_results["Photovoltaic"])) / 4000.0
-        for en in use_case.list_of_energies_HVAC:
-            if en > 0:
-                HVAC_kWh += en
-            else:
-                AC_kWh -= en
-
+        PV_total = np.sum(np.abs(use_case.PVpower)) / 4000.0
         EV_kWh_dom = np.sum(np.abs(st.session_state.df_results["ElectricVehicle"])) / 4000.0
         # No_cars * distance/100km * 16 kWh, 16 kWh per 100km
         EV_kWh_bus = number_of_cars * (distance_EV / 100) * 16
@@ -699,7 +707,7 @@ with tab7:
         # *********************
         labels = ['HVAC', 'Building\nappliances\nconsumption', 'EV']
 
-        sizes = np.array([(HVAC_kWh + AC_kWh) / 1000.0, el_kWh, EV_kWh])
+        sizes = np.array([(st.session_state.HVAC_kWh + st.session_state.AC_kWh) / 1000.0, el_kWh, EV_kWh])
         total_en = np.sum(sizes)
 
         fig1, ax1 = plt.subplots(1, 2, gridspec_kw={'width_ratios': [2, 1]})
@@ -709,9 +717,9 @@ with tab7:
                    startangle=140, explode=[0.2, 0.1, 0.1])
         ax1[0].axis('equal')
         labels = ["total energy, electric energy, other energy, PV"]
-        ax1[1].bar("total", (HVAC_kWh + AC_kWh) / 1000)
-        ax1[1].bar("total", el_kWh, bottom=(HVAC_kWh + AC_kWh) / 1000)
-        ax1[1].bar("total", EV_kWh, bottom=(HVAC_kWh + AC_kWh) / 1000 + el_kWh)
+        ax1[1].bar("total", (st.session_state.HVAC_kWh + st.session_state.AC_kWh) / 1000)
+        ax1[1].bar("total", el_kWh, bottom=(st.session_state.HVAC_kWh + st.session_state.AC_kWh) / 1000)
+        ax1[1].bar("total", EV_kWh, bottom=(st.session_state.HVAC_kWh + st.session_state.AC_kWh) / 1000 + el_kWh)
         ax1[1].bar("PV", PV_total)
         ax1[1].set_ylabel('Energy [kWh]')
         ax1[1].yaxis.tick_right()
@@ -728,116 +736,17 @@ with tab7:
         # *********************
         fig2, ax2 = plt.subplots(1, 2, gridspec_kw={'width_ratios': [2, 1]})
         labels = ["total energy, electric energy, other energy, PV"]
-        if use_case.heating_type == 1:
-            HVAC_energies = []
-            for x in range(96):
-                HVAC_energies.append(use_case.HVAC_COP(use_case.OutsideTemp[x]) * heating_el_P / 4.0)
 
-            # calculating HVAC energies
-            energies_heating = 0
-            energies_heating_optimized = 0
-            for i in range(len(use_case.list_of_times_HVAC)):
-                t_start = use_case.list_of_times_HVAC[i - 1]
-                t_end = use_case.list_of_times_HVAC[i]
-                if len(use_case.list_of_times_HVAC) == 1:
-                    t_end = 96
-                    t_start = 1
-                delta = t_end - t_start
-                if delta < 0:
-                    delta += 96
-                # ordered energies for each timestamp, first calculate default value for time and after that optimal
-                energies_timestamp = np.roll(HVAC_energies, -t_start)[:delta]
-                # not optimized
-                list_en = use_case.list_of_energies_HVAC[i]
-                if list_en < 0:
-                    continue
-                for en in energies_timestamp:
-                    if en <= 0:
-                        break
-                    elif en < (list_en / 4.0):
-                        list_en -= en / 4.0
-                        energies_heating += heating_el_P / 4.0
-                    else:  # only some leftovers
-                        energies_heating += (list_en / en) * heating_el_P / 4.0
-                        break
-
-                # optimized scenario, since these are monotonic functions we can just reorder the list and operate
-                # with first values
-                energies_timestamp[::-1].sort()
-                list_en = use_case.list_of_energies_HVAC[i]
-                for en in energies_timestamp:
-                    if en <= 0:
-                        break
-                    elif en < (list_en / 4.0):
-                        list_en -= en / 4.0
-                        energies_heating_optimized += heating_el_P / 4.0
-                    else:  # only some leftovers
-                        energies_heating_optimized += (list_en / en) * heating_el_P / 4.0
-                        break
-        elif use_case.heating_type == 2:
-            energies_heating = HVAC_kWh
-        else:
-            energies_heating = 0
-
-        if use_case.cooling_type == 1:
-            AC_energies = []
-            for x in range(96):
-                AC_energies.append(
-                    -use_case.airconditioner_COP(use_case.t_set, use_case.OutsideTemp[x]) * cooling_el_P / 4.0)
-            # calculating AC energies
-            energies_cooling = 0
-            energies_cooling_optimized = 0
-            for i in range(len(use_case.list_of_times_HVAC)):
-                t_start = use_case.list_of_times_HVAC[i - 1]
-                t_end = use_case.list_of_times_HVAC[i]
-                if len(use_case.list_of_times_HVAC) == 1:
-                    t_end = 96
-                    t_start = 1
-                delta = t_end - t_start
-                if delta < 0:
-                    delta += 96
-                # ordered energies for each timestamp, first calculate default value for time and after that optimal
-                energies_timestamp = np.roll(AC_energies, -t_start)[:delta]
-                # not optimized
-                list_en = use_case.list_of_energies_HVAC[i]
-                if list_en > 0:
-                    continue
-                for en in energies_timestamp:
-                    if en >= 0:
-                        break
-                    elif en > (list_en / 4.0):
-                        list_en -= en / 4.0
-                        energies_cooling += cooling_el_P / 4.0
-                    else:  # only some leftovers
-                        energies_cooling += (list_en / en) * cooling_el_P / 4.0
-                        break
-
-                # optimized scenario, since these are monotonic functions we can just reorder the list and operate
-                # with first values
-                energies_timestamp.sort()
-                list_en = use_case.list_of_energies_HVAC[i]
-                for en in energies_timestamp:
-                    if en >= 0:
-                        break
-                    elif en > (list_en / 4.0):
-                        list_en -= en / 4.0
-                        energies_cooling_optimized += cooling_el_P / 4.0
-                    else:  # only some leftovers
-                        energies_cooling_optimized += (list_en / en) * cooling_el_P / 4.0
-                        break
-        else:
-            energies_cooling = 0
-
-        ax2[1].bar("total", (energies_heating + energies_cooling) / 1000)
-        ax2[1].bar("total", el_kWh, bottom=(energies_heating + energies_cooling) / 1000)
-        ax2[1].bar("total", EV_kWh, bottom=(energies_heating + energies_cooling) / 1000 + el_kWh)
+        ax2[1].bar("total", (st.session_state.energies_heating + st.session_state.energies_cooling) / 1000)
+        ax2[1].bar("total", el_kWh, bottom=(st.session_state.energies_heating + st.session_state.energies_cooling) / 1000)
+        ax2[1].bar("total", EV_kWh, bottom=(st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 + el_kWh)
         # in case of HVAC or AC show optimized values
         ax2[1].bar("PV", PV_total)
         ax2[1].set_ylabel('Electric energy [kWh]')
         ax2[1].yaxis.tick_right()
         ax2[1].yaxis.set_label_position("right")
 
-        sizes = np.array([(energies_heating + energies_cooling) / 1000.0, el_kWh, EV_kWh])
+        sizes = np.array([(st.session_state.energies_heating + st.session_state.energies_cooling) / 1000.0, el_kWh, EV_kWh])
         total_en = np.sum(sizes)
         labels = ['HVAC', 'Building\nappliances\nconsumption', 'EV']
         # you have to transform from % to values autopct converts array into %!!!!
@@ -848,12 +757,6 @@ with tab7:
 
         fig2.suptitle("Total electric energy needs")
         st.pyplot(fig2)
-        if ((use_case.heating_type == 1) and (energies_heating > 0)):
-            st.write("Heat pump energies optimized additional savings:",
-                     int(energies_heating - energies_heating_optimized), 'Wh')
-        if ((use_case.cooling_type == 1) and (energies_cooling > 0)):
-            st.write("Air conditioner energies optimized additional savings:",
-                     int(energies_cooling - energies_cooling_optimized), 'Wh')
 
         # *********************
         # end plot 2         *
@@ -878,15 +781,15 @@ with tab7:
         else:
             flexibility_EV = 0
 
-        flexibility_HVAC = (energies_heating + energies_cooling) / 1000 / len(use_case.list_of_times_HVAC)
+        flexibility_HVAC = (st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 / len(use_case.list_of_times_HVAC)
         flexibility_battery = 0
         if use_case.bat_capacity>0:
             flexibility_battery = use_case.bat_capacity * use_case.bat_efficiency
         fig3, ax3 = plt.subplots(1, 2, sharey=True)
-        tets = ax3[0].bar("Total energy", (energies_heating + energies_cooling) / 1000, label='HVAC')
-        ax3[0].bar("Total energy", el_kWh, bottom=(energies_heating + energies_cooling) / 1000,
+        tets = ax3[0].bar("Total energy", (st.session_state.energies_heating + st.session_state.energies_cooling) / 1000, label='HVAC')
+        ax3[0].bar("Total energy", el_kWh, bottom=(st.session_state.energies_heating + st.session_state.energies_cooling) / 1000,
                    label='Building appliances\nconsumption')
-        ax3[0].bar("Total energy", EV_kWh, bottom=(energies_heating + energies_cooling) / 1000 + el_kWh, label='EV')
+        ax3[0].bar("Total energy", EV_kWh, bottom=(st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 + el_kWh, label='EV')
         ax3[0].legend()
         ax3[1].bar("Flexible energy", flexibility_EV, label='EV', color='wheat')
         ax3[1].bar("Flexible energy", flexibility_HVAC, bottom=flexibility_EV, label='HVAC', color='tan')
@@ -896,8 +799,7 @@ with tab7:
         ax3[0].set_ylabel('Electric energy [kWh]')
         fig3.suptitle("Flexibility")
         st.pyplot(fig3)
-        needed_bat = (
-                                 energies_heating + energies_cooling) / 1000 + el_kWh + EV_kWh - flexibility_EV - flexibility_HVAC - flexibility_battery
+        needed_bat = (st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 + el_kWh + EV_kWh - flexibility_EV - flexibility_HVAC - flexibility_battery
         # compenzate for return efficiency
         needed_bat /= use_case.bat_efficiency
         if needed_bat > 0:
