@@ -179,14 +179,16 @@ class profilgenerator2():
     def HVAC_el(self):
         """
         Calculates electric demand for heating/cooling
-        :return: Electric profile + total consumption
-                Energies cooling, energies heating
-        :rtype:
+        :return: Electric profile
+        :rtype: float, length 24*4 15min sampling
+
+        Modifies Energies cooling, energies heating
+         self.energies_heating
+         self.energies_cooling
         """
-        print("heating type", self.heating_type)
         self.HVAC_kWh = 0
         self.AC_kWh = 0
-        print(self.list_of_energies_HVAC)
+        HVAC_el_power_profile = np.zeros(96)  # electrical profile of HVAC randomize start!
         for en in self.list_of_energies_HVAC:
             if en > 0:
                 self.HVAC_kWh += en
@@ -200,10 +202,10 @@ class profilgenerator2():
             # calculates all energies that HVAC is able to produce at certain time in the day 15min timestamp (hence /4.0)
             for x in range(96):
                 HVAC_energies.append(self.HVAC_COP(self.OutsideTemp[x]) * self.heating_el_P / 4.0)
-            print('HVAC', HVAC_energies)
             # calculating HVAC energies
             self.energies_heating = 0
             for i in range(len(self.list_of_times_HVAC)):
+                HVAC_profile_temp = []
                 t_start = self.list_of_times_HVAC[i - 1]
                 t_end = self.list_of_times_HVAC[i]
                 if len(self.list_of_times_HVAC) == 1:
@@ -224,12 +226,53 @@ class profilgenerator2():
                     elif en < list_en:
                         list_en -= en
                         self.energies_heating += self.heating_el_P / 4.0
+                        HVAC_profile_temp.append(self.heating_el_P)
                     else:  # only some leftovers
                         self.energies_heating += (list_en / en) * self.heating_el_P / 4.0
+                        HVAC_profile_temp.append(self.heating_el_P*(list_en / en))
                         break
+                # creating profile
+                delta_time_HVAC = len(HVAC_profile_temp)
+                if (t_start>95):
+                    t_start = t_start-96
+                if t_start >= t_end-delta_time_HVAC:
+                    t_hvac = t_start
+                else:
+                    t_hvac=random.randint(t_start,t_end-delta_time_HVAC)
+                for i2 in range(delta_time_HVAC):
+                    if t_hvac+i2>95:
+                        t_hvac=t_hvac-96
+                    HVAC_el_power_profile[t_hvac+i2] = HVAC_el_power_profile[t_hvac+i2]+HVAC_profile_temp[i2]
 
         elif self.heating_type == 2:
             self.energies_heating = self.HVAC_kWh
+            #creating profiles, random start
+            for i in range(len(self.list_of_times_HVAC)):
+                temp_eng=self.list_of_energies_HVAC[i]
+                t_start = self.list_of_times_HVAC[i - 1]
+                t_end = self.list_of_times_HVAC[i]
+                if len(self.list_of_times_HVAC) == 1:
+                    t_end = 96
+                    t_start = 1
+                delta = t_end - t_start
+                if delta < 0:
+                    delta += 96
+                delta_time_HVAC = int(temp_eng*4.0/self.heating_el_P)
+                if (t_start > 95):
+                    t_start = t_start - 96
+                if t_start >= t_end - delta_time_HVAC:
+                    t_hvac = t_start
+                else:
+                    t_hvac = random.randint(t_start, t_end - delta_time_HVAC)
+                for i2 in range(delta_time_HVAC):
+                    if t_hvac + i2 > 95:
+                        t_hvac = t_hvac - 96
+                    HVAC_el_power_profile[t_hvac + i2] = HVAC_el_power_profile[t_hvac + i2] + self.heating_el_P
+                # add reminder
+                if t_hvac+delta_time_HVAC > 95:
+                    t_hvac = t_hvac - 96
+                HVAC_el_power_profile[t_hvac+delta_time_HVAC] = HVAC_el_power_profile[t_hvac+delta_time_HVAC] + (temp_eng*4.0)%self.heating_el_P
+
         else:
             self.energies_heating = 0
 
@@ -244,6 +287,7 @@ class profilgenerator2():
             # calculating AC energies
             self.energies_cooling = 0
             for i in range(len(self.list_of_times_HVAC)):
+                HVAC_profile_temp = []
                 t_start = self.list_of_times_HVAC[i - 1]
                 t_end = self.list_of_times_HVAC[i]
                 if len(self.list_of_times_HVAC) == 1:
@@ -264,12 +308,26 @@ class profilgenerator2():
                     elif en > list_en:
                         list_en -= en
                         self.energies_cooling += self.cooling_el_P / 4.0
+                        HVAC_profile_temp.append(self.cooling_el_P)
                     else:  # only some leftovers
                         self.energies_cooling += (list_en / en) * self.cooling_el_P / 4.0
+                        HVAC_profile_temp.append(self.cooling_el_P * (list_en / en))
                         break
+                # creating profile
+                delta_time_HVAC = len(HVAC_profile_temp)
+                if (t_start > 95):
+                    t_start = t_start - 96
+                if t_start >= t_end - delta_time_HVAC:
+                    t_hvac = t_start
+                else:
+                    t_hvac = random.randint(t_start, t_end - delta_time_HVAC)
+                for i2 in range(delta_time_HVAC):
+                    if t_hvac + i2 > 95:
+                        t_hvac = t_hvac - 96
+                    HVAC_el_power_profile[t_hvac + i2] = HVAC_el_power_profile[t_hvac + i2] + HVAC_profile_temp[i2]
         else:
             self.energies_cooling = 0
-
+        return HVAC_el_power_profile
 
     # business building
     # need to generate statistically consumption
@@ -503,11 +561,8 @@ class profilgenerator2():
 
         if dishWash == "on":
             for user in range(df.shape[1]):
-                # print("user =", user)
                 try:
                     for startT in globals()['dishWasher{}'.format(user)]:
-                        #print("startT = ", startT)
-                        #print('adding dishWasher profile to user', user)
                         count = 0
                         for currentP in dishWasherProfile:
                             if count + startT - offset >= 1440:  # if the index would go over midnight shift it to the start of the day
@@ -597,7 +652,7 @@ class profilgenerator2():
         ################################
         #### Load profile generator ####
         ################################
-        if self.com_build_on=="private house":
+        if self.com_build_on == "private house":
             config = houses_matrycs.House_types()
             if self.weekend:
                 startDay = 0
@@ -605,9 +660,6 @@ class profilgenerator2():
                 startDay = 1
             config.startDay = startDay
             config.calculation(self.house_type)
-            print('Loading config: ' + cfgFile, flush=True)
-            print("Results will be written into: " + cfgOutputDir + "\n", flush=True)
-            print("NOTE: Simulation may take a (long) while...\n", flush=True)
 
             # Create empty files
             writer.createEmptyFiles()
@@ -745,11 +797,9 @@ class profilgenerator2():
             self.list_of_times_HVAC.append(96)
             self.list_of_energies_HVAC.append(sum_energy_needed)
 
-        self.HVAC_el()
-
         self.dailyResults = pd.DataFrame({
             'HeatingDemand': self.HeatingDemand,
-            #'HeatingDemand_el' : self.HeatingDemand_el,
+            'HeatingCoolingDemand_el': self.HVAC_el(), # Daily electric profiles for Heating/Cooling
             'OutsideTemp': self.OutsideTemp,
             'SolarGains': self.SolarGains,
             'ElectricVehicle': self.charging_profile,

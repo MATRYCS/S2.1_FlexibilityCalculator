@@ -84,18 +84,18 @@ def save_values(value):
         st.session_state.df.loc[st.session_state.building_no, 'south_window_azimuth'] = st.session_state.south_window_azimuth
     elif value == 'windows_tilt':
         st.session_state.df.loc[st.session_state.building_no, 'windows_tilt'] = st.session_state.windows_tilt
-    print("Saving state:", st.session_state.df)
+    #print("Saving state:", st.session_state.df)
 
 def df_change():
     if len(st.session_state.df)+1 > st.session_state.number_buildings:
         list_drop=np.arange(st.session_state.number_buildings + 1,st.session_state.df.index.max()+1)
-        print(list_drop)
+        #print(list_drop)
         st.session_state.df = st.session_state.df.drop(list_drop)
 
 def df_PV_change():
     if len(st.session_state.df_PV)+1 > st.session_state.number_PV:
         list_drop=np.arange(st.session_state.number_PV + 1,st.session_state.df_PV.index.max()+1)
-        print(list_drop)
+        #print(list_drop)
         st.session_state.df_PV = st.session_state.df_PV.drop(list_drop)
 
 def save_values_PV(value):
@@ -115,7 +115,7 @@ def save_values_PV(value):
         st.session_state.df_PV.loc[st.session_state.PV_no, 'Inclination'] = st.session_state.Inclination
     elif value == 'Azimuth':
         st.session_state.df_PV.loc[st.session_state.PV_no, 'Azimuth'] = st.session_state.Azimuth
-    print("Saving state:", st.session_state.df_PV)
+    #print("Saving state:", st.session_state.df_PV)
 
 def up_file():
     """
@@ -580,12 +580,12 @@ if run_button:
         for i in range(1,building+1):
             # load all parameters relevant for specific house
             use_case.com_build_on = st.session_state.df.loc[i, "type_building"]
-            print("type", use_case.com_build_on)
+            #print("type", use_case.com_build_on)
             use_case.house_type=st.session_state.df.loc[i, "type_of_family"]
             use_case.cooling_type = cool_types.index(st.session_state.df.loc[i,'cooling_type']) + 1
-            use_case.cooling_el_P = st.session_state.heating_P
+            use_case.cooling_el_P = st.session_state.cooling_P
             use_case.heating_type = heat_types.index(st.session_state.df.loc[i,'heating_type']) + 1
-            use_case.heating_el_P = st.session_state.cooling_P
+            use_case.heating_el_P = st.session_state.heating_P
             use_case.background_consumption = st.session_state.df.loc[i, "background_P"]
             use_case.peak_consumption = st.session_state.df.loc[i, "peak_P"]
             use_case.office_start_t = st.session_state.df.loc[i, "office_start"]*60
@@ -614,9 +614,9 @@ if run_button:
             progress_bar.progress(int(i*100.0/building))
             st.session_state.energies_heating = st.session_state.energies_heating + use_case.energies_heating
             st.session_state.energies_cooling = st.session_state.energies_cooling + use_case.energies_cooling
-        print(st.session_state.df_results)
+        #print(st.session_state.df_results)
         st.session_state.df_results["Business_EV"] = use_case.business_EV_profile(number_of_cars,distance_EV).tolist()
-        print(st.session_state.df_results)
+        #print(st.session_state.df_results)
         created_profiles_bool = True
         st.session_state.df_results["OutsideTemp"] = st.session_state.df_results["OutsideTemp"] / building
         progress_bar.progress(100)
@@ -655,8 +655,9 @@ with tab6:
             x=alt.X('Time', title="Time [h]"),
             y=alt.Y('ConsumptionHouse', title="Power[W]"),  # we set x and y label only in one chart
             # by setting colors we can define legend for all profiles
-            color=alt.Color('Colors:N', scale=alt.Scale(range=['SpringGreen', 'black', 'blue', 'brown', 'red'],
-                domain=['PV', 'Consumption house', 'EV households', 'Commercial building', 'EV commercial fleet']),
+            color=alt.Color('Colors:N', scale=alt.Scale(range=['SpringGreen', 'black', 'blue', 'brown', 'red', 'gold'],
+                domain=['PV', 'Consumption house', 'EV households', 'Commercial building', 'EV commercial fleet',
+                        'Heating/Cooling']),
                 legend=alt.Legend(orient='bottom',titleAnchor='middle'))
         )
         profil3 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='blue').encode(
@@ -671,7 +672,11 @@ with tab6:
             x='Time',
             y='Business_EV'
         )
-        profiles = alt.layer(profil1, profil2, profil3, profil4, profil5, settings).properties(title='Electric profiles for zone')
+        profil6 = alt.Chart(st.session_state.df_results.reset_index()).mark_line(color='gold', strokeDash=[15, 15]).encode(
+            x='Time',
+            y='HeatingCoolingDemand_el'
+        )
+        profiles = alt.layer(profil1, profil2, profil3, profil4, profil5, profil6, settings).properties(title='Electric profiles for zone')
         st.altair_chart(profiles.configure_axis().interactive(), use_container_width=True)
 
         # second graph
