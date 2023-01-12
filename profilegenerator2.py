@@ -197,6 +197,8 @@ class profilgenerator2():
         ###########
         # Heating #
         ###########
+        # seed for randomizing of turning on and off the HVAC
+        seed = random.randrange(96)
         if self.heating_type == 1:
             HVAC_energies = []
             # calculates all energies that HVAC is able to produce at certain time in the day 15min timestamp (hence /4.0)
@@ -233,12 +235,10 @@ class profilgenerator2():
                         break
                 # creating profile
                 delta_time_HVAC = len(HVAC_profile_temp)
+                t_start = t_start + seed
                 if (t_start>95):
                     t_start = t_start-96
-                if t_start >= t_end-delta_time_HVAC:
-                    t_hvac = t_start
-                else:
-                    t_hvac=random.randint(t_start,t_end-delta_time_HVAC)
+                t_hvac = t_start
                 for i2 in range(delta_time_HVAC):
                     if t_hvac+i2>95:
                         t_hvac=t_hvac-96
@@ -258,12 +258,10 @@ class profilgenerator2():
                 if delta < 0:
                     delta += 96
                 delta_time_HVAC = int(temp_eng*4.0/self.heating_el_P)
+                t_start = t_start + seed
                 if (t_start > 95):
                     t_start = t_start - 96
-                if t_start >= t_end - delta_time_HVAC:
-                    t_hvac = t_start
-                else:
-                    t_hvac = random.randint(t_start, t_end - delta_time_HVAC)
+                t_hvac = t_start
                 for i2 in range(delta_time_HVAC):
                     if t_hvac + i2 > 95:
                         t_hvac = t_hvac - 96
@@ -272,7 +270,6 @@ class profilgenerator2():
                 if t_hvac+delta_time_HVAC > 95:
                     t_hvac = t_hvac - 96
                 HVAC_el_power_profile[t_hvac+delta_time_HVAC] = HVAC_el_power_profile[t_hvac+delta_time_HVAC] + (temp_eng*4.0)%self.heating_el_P
-
         else:
             self.energies_heating = 0
 
@@ -315,12 +312,10 @@ class profilgenerator2():
                         break
                 # creating profile
                 delta_time_HVAC = len(HVAC_profile_temp)
+                t_start = t_start + seed
                 if (t_start > 95):
                     t_start = t_start - 96
-                if t_start >= t_end - delta_time_HVAC:
-                    t_hvac = t_start
-                else:
-                    t_hvac = random.randint(t_start, t_end - delta_time_HVAC)
+                t_hvac = t_start
                 for i2 in range(delta_time_HVAC):
                     if t_hvac + i2 > 95:
                         t_hvac = t_hvac - 96

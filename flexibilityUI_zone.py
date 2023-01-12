@@ -614,9 +614,7 @@ if run_button:
             progress_bar.progress(int(i*100.0/building))
             st.session_state.energies_heating = st.session_state.energies_heating + use_case.energies_heating
             st.session_state.energies_cooling = st.session_state.energies_cooling + use_case.energies_cooling
-        #print(st.session_state.df_results)
         st.session_state.df_results["Business_EV"] = use_case.business_EV_profile(number_of_cars,distance_EV).tolist()
-        #print(st.session_state.df_results)
         created_profiles_bool = True
         st.session_state.df_results["OutsideTemp"] = st.session_state.df_results["OutsideTemp"] / building
         progress_bar.progress(100)
@@ -689,7 +687,7 @@ with tab6:
             x='Time',
             y=alt.Y('OutsideTemp', axis=alt.Axis(title='Outside temperature [°C]', titleColor='green'))
         ).add_selection(resize)
-        profiles2 = alt.layer(profil2_1, profil2_2).resolve_scale(y='independent').properties(title='Heating demand')
+        profiles2 = alt.layer(profil2_1, profil2_2).resolve_scale(y='independent').properties(title='Heating demand for zone')
         st.altair_chart(profiles2.configure_axis().interactive(), use_container_width=True)
     else:
         st.info("Run simulation to get results")
