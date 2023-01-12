@@ -5,7 +5,6 @@ Created on Wed Aug 31 07:44:06 2022
 @authors: Andrej Campa, Denis Sodin
 
 TODO: EV penetration
-TODO: Heating in final tab, sumarize according to house!!!!
 """
 import random
 import json
@@ -301,8 +300,8 @@ map_data = pd.DataFrame(data, columns=["lat", "lon"])
 
 st.title("Matrycs - Catalogue service")
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
-    ["🗺️Map", "📃Zone", "📃PV", "📃EV", "📃Battery", "📈Profiles", "📊Flexibility"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(
+    ["🗺️Map", "📃Zone", "📃PV", "📃EV", "📃Battery", "📈Profiles", "📊Flexibility", "🔌Substation", "📓Data"])
 with tab1:
     st.map(map_data)
 
@@ -576,6 +575,7 @@ if run_button:
     st.session_state.HVAC_kWh = 0
     st.session_state.energies_heating = 0
     st.session_state.energies_cooling = 0
+    st.session_state.EV_kWh_dom_flex = 0
     if len(st.session_state.df) >= building:
         for i in range(1,building+1):
             # load all parameters relevant for specific house
@@ -605,15 +605,23 @@ if run_button:
             use_case.windows_tilt = st.session_state.df.loc[i, "windows_tilt"]
             use_case.hasEV = random.random() <= penetration_EV/100.0
             use_case.commute_distance_EV = commute_distance_EV
+            results_sim = use_case.calculation_BH()
             if i == 1:
-                st.session_state.df_results = use_case.calculation_BH()
+                st.session_state.df_results = results_sim
             else:
-                st.session_state.df_results = st.session_state.df_results+use_case.calculation_BH()
+                st.session_state.df_results = st.session_state.df_results + results_sim
             st.session_state.HVAC_kWh = st.session_state.HVAC_kWh + use_case.HVAC_kWh
             st.session_state.AC_kWh = st.session_state.AC_kWh + use_case.AC_kWh
-            progress_bar.progress(int(i*100.0/building))
             st.session_state.energies_heating = st.session_state.energies_heating + use_case.energies_heating
             st.session_state.energies_cooling = st.session_state.energies_cooling + use_case.energies_cooling
+
+            # calculate flexibility for EV of house
+            EV_kWh_dom = np.sum(np.abs(results_sim["ElectricVehicle"])) / 4000.0
+            if EV_kWh_dom > 1:
+                EV_start_time = np.rint(use_case.EV_startTimes[0] / 15)
+                EV_end_time = np.rint(use_case.EV_endTimes[0] / 15)
+                st.session_state.EV_kWh_dom_flex = st.session_state.EV_kWh_dom_flex + (EV_end_time - EV_start_time) / 96 * EV_kWh_dom
+            progress_bar.progress(int(i * 100.0 / building))
         st.session_state.df_results["Business_EV"] = use_case.business_EV_profile(number_of_cars,distance_EV).tolist()
         created_profiles_bool = True
         st.session_state.df_results["OutsideTemp"] = st.session_state.df_results["OutsideTemp"] / building
@@ -768,21 +776,7 @@ with tab7:
         # *********************
         #  flexibility        *
         # *********************
-        if len(use_case.EV_startTimes) > 0:
-            EV_start_time = np.rint(use_case.EV_startTimes[0] / 15)
-            EV_end_time = np.rint(use_case.EV_endTimes[0] / 15)
-            flexibility_EV = 0
-
-            #TODO distinguish EV_kWh
-            flexibility_EV = (EV_end_time - EV_start_time) / 96 * EV_kWh_dom
-            if EV_start_time > 95:
-                EV_start_time -= 96
-            if EV_end_time > 95:
-                EV_end_time -= 96
-
-            flexibility_EV = flexibility_EV + EV_kWh_bus
-        else:
-            flexibility_EV = 0
+        flexibility_EV = st.session_state.EV_kWh_dom_flex + EV_kWh_bus
 
         flexibility_HVAC = (st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 / len(use_case.list_of_times_HVAC)
         flexibility_battery = 0
@@ -811,3 +805,33 @@ with tab7:
 
     else:
         st.info("Run simulation to get results")
+
+with tab8:
+    if created_profiles_bool:
+        consumption = st.session_state.df_results['HeatingCoolingDemand_el'] + \
+                      st.session_state.df_results['ElectricVehicle'] + \
+                      st.session_state.df_results['BusinessBuildingProfile'] + \
+                      st.session_state.df_results['ConsumptionHouse'] + \
+                      st.session_state.df_results['Business_EV']
+        production = st.session_state.df_results['Photovoltaic']
+        col1, col2, = st.columns([2,1])
+        with col1:
+            st.image('zone.png')
+        with col2:
+
+            st.write("**Maximal Power at substation**")
+            st.write("*Power delivered:*",f'{consumption.max()/1000:.2f}',"kWh")
+            st.write("*Power generated:*",f'{production.max()/1000:.2f}',"kWh")
+
+            st.write("**Combined Maximal Power at substation**")
+            max_el=(consumption - production).max() / 1000
+            min_el=(consumption - production).min() / 1000
+            if -min_el > max_el:
+                st.write("*Power:*",f'{min_el:.2f}',"kWh")
+                st.warning("Power generated is higher compared to maximal consumption, "
+                           "might lead to overvoltage issues!")
+            else:
+                st.write("*Power:*", f'{max_el:.2f}', "kWh")
+with tab9:
+    if created_profiles_bool:
+        st.write(st.session_state.df_results)
