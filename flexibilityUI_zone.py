@@ -3,8 +3,6 @@
 Created on Wed Aug 31 07:44:06 2022
 
 @authors: Andrej Campa, Denis Sodin
-
-TODO: EV penetration
 """
 import random
 import json
@@ -19,7 +17,6 @@ import altair as alt
 com_build_on = False
 number_of_cars = 1
 distance_EV = 0
-created_profiles_bool = False
 
 
 def save_values(value):
@@ -31,8 +28,6 @@ def save_values(value):
     :rtype: none
     """
     # save state parameters!
-    progress_bar.progress(0)
-    progress_bar_PV.progress(0)
     if value == 'radio_BH':
         st.session_state.df.loc[st.session_state.building_no,'type_building'] = st.session_state.radio_BH
     elif value == 'type_of_family':
@@ -106,8 +101,6 @@ def save_values_PV(value):
     :rtype: none
     """
     # save state parameters!
-    progress_bar.progress(0)
-    progress_bar_PV.progress(0)
     if value == 'Pn':
         st.session_state.df_PV.loc[st.session_state.PV_no,'Pn'] = st.session_state.Pn
     elif value == 'Inclination':
@@ -192,6 +185,7 @@ if 'df' not in st.session_state:
     st.session_state.bat_efficiency = 90.0
     st.session_state.latitude = 46.050
     st.session_state.longitude = 14.510
+    st.session_state.created_profiles_bool = False
 
 if 'df_PV' not in st.session_state:
     st.session_state.df_PV = pd.DataFrame(columns={'Pn': pd.Series(dtype='float'),
@@ -289,9 +283,9 @@ types_of_day = ["Workday", "Weekend/Holiday"]
 type_of_day = st.sidebar.selectbox("Day of the week", types_of_day, key='weekend')
 use_case.weekend = types_of_day.index(type_of_day)
 use_case.latitude = st.sidebar.number_input("Latitude [°]", min_value=-90.0, max_value=90.0, format="%.4f",
-                                            help="Geographical latitude", step = 0.0001, key='latitude')
+                                            help="Geographical latitude", step=0.001, key='latitude')
 use_case.longitude = st.sidebar.number_input("Longitude [°]", min_value=-180.0, max_value=180.0,
-                                             format="%.4f", step = 0.0001, key='longitude',
+                                             format="%.4f", step=0.001, key='longitude',
                                              help="Geographical longitude")
 
 data = np.array([[use_case.latitude, use_case.longitude]])
@@ -373,14 +367,14 @@ with tab2:
     col1, col2, = st.columns(2)
     with col1:
         st.session_state.heating_P = st.session_state.df.loc[st.session_state.building_no, "heating_el_P"]
-        use_case.heating_el_P = st.number_input("Max electrical power of heating device [W]",
+        use_case.heating_el_P = st.number_input("Max electrical power of heating device [W]", step=100,
                                        min_value=0, max_value=None, value=3000, key='heating_P', on_change=save_values, args =("heating_P",),
                                        help="This is the el. power of the device in the case of HVAC, the COP "
                                             "(Coefficient Of Performance) number will increase the heating power of HVAC")
 
     with col2:
         st.session_state.cooling_P = st.session_state.df.loc[st.session_state.building_no, "cooling_el_P"]
-        use_case.cooling_el_P = st.number_input("Max electrical power of cooling device [W]",
+        use_case.cooling_el_P = st.number_input("Max electrical power of cooling device [W]", step=100,
                                        min_value=0, max_value=None, value=2000, key='cooling_P', on_change=save_values, args =("cooling_P",),
                                        help="This is the el. power of the device in case of air conditioning, the COP "
                                             "(Coefficient Of Performance) number will increase the cooling power")
@@ -394,13 +388,13 @@ with tab2:
     col5, col6 = st.columns(2)
     with col5:
         st.session_state.walls = st.session_state.df.loc[st.session_state.building_no, "walls"]
-        use_case.walls_area = st.number_input("Walls area [m²]", min_value=0, max_value=None, value=400,
+        use_case.walls_area = st.number_input("Walls area [m²]", min_value=0, max_value=None, value=400, step=10,
                                               key='walls', on_change=save_values, args =("walls",),
                                               help="Area of all envelope surfaces, including windows in contact with the outside.")
 
     with col6:
         st.session_state.U_walls = st.session_state.df.loc[st.session_state.building_no, "U_walls"]
-        use_case.U_walls = st.number_input("U value of facade [W/m²K]", min_value=0.0, max_value=None, value=0.2,
+        use_case.U_walls = st.number_input("U value of facade [W/m²K]", min_value=0.0, max_value=None, value=0.2, step=0.1,
                                            key='U_walls', on_change=save_values, args =("U_walls",),)
     st.session_state.T_set = st.session_state.df.loc[st.session_state.building_no, "T_set"]
     use_case.t_set = st.number_input("Room temperature [°]", min_value=15, max_value=30, value=20,
@@ -435,17 +429,17 @@ with tab2:
 
     if room_param == "Advanced":
         st.session_state.floor_area = st.session_state.df.loc[st.session_state.building_no, "floor_area"]
-        use_case.floor_area = st.number_input("Floor area [m²]", min_value=0, max_value=None, value=500,
+        use_case.floor_area = st.number_input("Floor area [m²]", min_value=0, max_value=None, value=500, step=10,
                                               key='floor_area', on_change=save_values, args=("floor_area",),)
         st.session_state.volume_building = st.session_state.df.loc[st.session_state.building_no, "volume_building"]
-        use_case.volume_building = st.number_input("Building volume [m³]", min_value=0, max_value=None, value=400,
+        use_case.volume_building = st.number_input("Building volume [m³]", min_value=0, max_value=None, value=400, step=10,
                                                    key='volume_building', on_change=save_values, args=("volume_building",),)
         st.session_state.ach_vent = st.session_state.df.loc[st.session_state.building_no, "ach_vent"]
-        use_case.ach_vent = st.number_input("Fraction of air mass exchanged through ventilation", min_value=0.0,
+        use_case.ach_vent = st.number_input("Fraction of air mass exchanged through ventilation", min_value=0.0, step=0.05,
                                             max_value=1.0, value=0.35, key='ach_vent', on_change=save_values, args=("ach_vent",),
                                             help="Fraction of air changed per hour through ventilation, 0.35 means approx. one third of air volume is changed in a hour.")
         st.session_state.vent_eff = st.session_state.df.loc[st.session_state.building_no, "vent_eff"]
-        use_case.ventilation_efficiency = st.number_input("Ventilation efficiency", min_value=0.0, max_value=1.0,
+        use_case.ventilation_efficiency = st.number_input("Ventilation efficiency", min_value=0.0, max_value=1.0, step=0.05,
                                                           value=0.6, key='vent_eff', on_change=save_values, args=("vent_eff",),
                                                           help="The efficiency of the heat recovery system for ventilation. Set to 0 if there is no heat recovery, 1 means heat recovery is 100% effective, no losses from ventilation.")
         thermal_capacitances = [80000, 110000, 165000, 260000, 370000]
@@ -472,7 +466,7 @@ with tab2:
         st.session_state.U_window = st.session_state.df.loc[st.session_state.building_no, "U_window"]
         use_case.U_window = st.number_input("U value of glazed surfaces of windows [W/m²K]", min_value=0.0,
                                              key='U_window', on_change=save_values, args=("U_window",),
-                                             max_value=None, value=1.1)
+                                             max_value=None, value=1.1, step=0.1)
 
     if win_param == "Basic":
         st.write("Assumed value of south window area is 1/3 of entire window area. Current south window area =",
@@ -492,11 +486,11 @@ with tab2:
                                                      key='south_window_area', on_change=save_values, args=("south_window_area",),
                                                      help="Area of windows facing the south.")
         st.session_state.south_window_azimuth = st.session_state.df.loc[st.session_state.building_no, "south_window_azimuth"]
-        use_case.south_window_azimuth = st.number_input("Azimuth of south windows [°]", min_value=-90, max_value=90,
+        use_case.south_window_azimuth = st.number_input("Azimuth of south windows [°]", min_value=-90, max_value=90, step=5,
                                                         value=0, key='south_window_azimuth', on_change=save_values, args=("south_window_azimuth",),
                                                         help="The azimuth, or orientation, is the angle of the windows relative to the direction due South. - 90° is East, 0° is South and 90° is West.")
         st.session_state.windows_tilt = st.session_state.df.loc[st.session_state.building_no, "windows_tilt"]
-        use_case.windows_tilt = st.number_input("Inclination/slope [°]", min_value=0, max_value=90, value=90,
+        use_case.windows_tilt = st.number_input("Inclination/slope [°]", min_value=0, max_value=90, value=90, step=5,
                                                 key='windows_tilt', on_change=save_values, args=("windows_tilt",),
                                                 help="Angle of the south windows from the horizontal plane")
 
@@ -520,30 +514,30 @@ with tab3:
 
     st.header("Parameters")
     st.session_state.Pn = st.session_state.df_PV.loc[st.session_state.PV_no,"Pn"]
-    use_case.PV_nominal_power = st.number_input("Installed peak power of the PV [kWp]", min_value=0.0, key='Pn',
+    use_case.PV_nominal_power = st.number_input("Installed peak power of the PV [kWp]", min_value=0.0, key='Pn', step=1.0,
                                                 max_value=None, value=5.0, format=None, on_change=save_values_PV, args=("Pn",),) * 1000
 
     st.session_state.Inclination =  st.session_state.df_PV.loc[st.session_state.PV_no,"Inclination"]
     use_case.tiltPV = st.number_input("Inclination/slope [°]", min_value=0, max_value=90, value=30, format=None, key='Inclination',
                                       help="Angle of the PV modules from the horizontal plane",
-                                         on_change=save_values_PV, args=("Inclination",))
+                                         on_change=save_values_PV, args=("Inclination",) ,step=5)
     st.session_state.Azimuth = st.session_state.df_PV.loc[st.session_state.PV_no, "Azimuth"]
-    use_case.azimuthPV = st.number_input("Azimuth [°]", min_value=-180.0, max_value=180.0, value=0.0, step=0.1,
+    use_case.azimuthPV = st.number_input("Azimuth [°]", min_value=-180, max_value=180, value=0, step=5,
                                          format=None, key='Azimuth', on_change=save_values_PV, args=("Azimuth",),
                                              help="The azimuth, or orientation, is the angle of the PV modules relative to the direction due South. - 90° is East, 0° is South and 90° is West.")
 
 with tab4:
     st.write("**Typical EV characteristic in zone**")
     use_case.EV_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None,
-                                           value=40.0, key='EV_capacity',
+                                           value=40.0, key='EV_capacity', step=1.0,
                                            help="The battery must be large enough to cover the entire commute. Otherwise, depending on the size of the battery, only part of the distance will be considered!") * 1000
     use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7, key='EV_power') * 1000
     st.write("----------------------------------------------------------------------------------")
     st.write("**Households settings**")
-    penetration_EV = st.number_input("Penetration of EVs into housholds [%]", min_value=0, max_value=100,
+    penetration_EV = st.number_input("Penetration of EVs into housholds [%]", min_value=0, max_value=100, step=5,
                                            value=50,key='penetration_EV')
     commute_distance_EV = st.number_input("Average one-way commute distance done by EV [km]", min_value=0, max_value=None,
-                                  value=25, key='commute_distance_EV',
+                                  value=25, key='commute_distance_EV', step=5,
                                   help="Average daily distance of EV vehicles, you can estimate the total distance divided by the number of vehicles")
 
     st.write("----------------------------------------------------------------------------------")
@@ -551,16 +545,16 @@ with tab4:
     number_of_cars = st.number_input("Number of vehicles:", min_value=0, max_value=None, value=1,
                                      help="Total number of all EV vehicles in the fleet.", key='number_of_cars')
     distance_EV = st.number_input("Average daily distance done by vehicle [km]", min_value=0, max_value=None,
-                                  value=20, key='distance_EV',
+                                  value=20, key='distance_EV', step=5,
                                   help="Average daily distance of EV vehicles, you can estimate the total distance divided by the number of vehicles")
 
 with tab5:
 
     use_case.bat_capacity = st.number_input("Battery capacity [kWh]", min_value=0.0, max_value=None, value=15.0,
-                                            step=0.1, key='bat_capacity')
+                                            step=1.0, key='bat_capacity')
     use_case.bat_power = st.number_input("Peak (dis)charging power [kW]", min_value=0.0, max_value=None, value=5.0,
-                                         step=0.1, key='bat_power')
-    use_case.bat_efficiency = st.number_input("Charging efficiency [%]", min_value=0.0, max_value=100.0, value=90.0,
+                                         step=1.0, key='bat_power')
+    use_case.bat_efficiency = st.number_input("Charging efficiency [%]", min_value=0.0, max_value=100.0, value=90.0, step=1.0,
                                                   help="Efficiency of battery charging/discharging.", key='bat_efficiency') / 100
 
 
@@ -614,7 +608,10 @@ if run_button:
             st.session_state.AC_kWh = st.session_state.AC_kWh + use_case.AC_kWh
             st.session_state.energies_heating = st.session_state.energies_heating + use_case.energies_heating
             st.session_state.energies_cooling = st.session_state.energies_cooling + use_case.energies_cooling
-
+            if i == 1:
+                st.session_state.flexibility_HVAC = (st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 / len(use_case.list_of_times_HVAC)
+            else:
+                st.session_state.flexibility_HVAC = st.session_state.flexibility_HVAC+(st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 / len(use_case.list_of_times_HVAC)
             # calculate flexibility for EV of house
             EV_kWh_dom = np.sum(np.abs(results_sim["ElectricVehicle"])) / 4000.0
             if EV_kWh_dom > 1:
@@ -623,7 +620,7 @@ if run_button:
                 st.session_state.EV_kWh_dom_flex = st.session_state.EV_kWh_dom_flex + (EV_end_time - EV_start_time) / 96 * EV_kWh_dom
             progress_bar.progress(int(i * 100.0 / building))
         st.session_state.df_results["Business_EV"] = use_case.business_EV_profile(number_of_cars,distance_EV).tolist()
-        created_profiles_bool = True
+        st.session_state.created_profiles_bool = True
         st.session_state.df_results["OutsideTemp"] = st.session_state.df_results["OutsideTemp"] / building
         progress_bar.progress(100)
     else:
@@ -637,14 +634,17 @@ if run_button:
                 use_case.azimuthPV = st.session_state.df_PV.loc[i,'Azimuth']
                 if i == 1:
                     st.session_state.df_results["Photovoltaic"] = use_case.calculation_PV()
+                    st.session_state.PV_total = np.sum(np.abs(use_case.PVpower)) / 4000.0
                 else:
                     st.session_state.df_results["Photovoltaic"] = st.session_state.df_results["Photovoltaic"] + use_case.calculation_PV()
+                    st.session_state.PV_total = st.session_state.PV_total + np.sum(np.abs(use_case.PVpower)) / 4000.0
                 progress_bar_PV.progress(int(i * 100.0 / PV))
+
         progress_bar_PV.progress(100)
     else:
         st.sidebar.warning("All PV systems are not defined!")
 with tab6:
-    if created_profiles_bool:
+    if st.session_state.created_profiles_bool:
         dates = np.arange(0, 24, 0.25)
         st.session_state.df_results.index = dates
         st.session_state.df_results.index.names = ['Time']
@@ -701,14 +701,13 @@ with tab6:
         st.info("Run simulation to get results")
 
 with tab7:
-    if created_profiles_bool:
+    if st.session_state.created_profiles_bool:
         st.write("**Energy needs of the house for a typical day in**", month)
         if com_build_on == 'private house':
             el_kWh = np.sum(st.session_state.df_results["ConsumptionHouse"]) / 4000.0
         else:
             el_kWh = np.sum(st.session_state.df_results["BusinessBuildingProfile"]) / 4000.0
         EV_kWh = 0
-        PV_total = np.sum(np.abs(use_case.PVpower)) / 4000.0
         EV_kWh_dom = np.sum(np.abs(st.session_state.df_results["ElectricVehicle"])) / 4000.0
         # No_cars * distance/100km * 16 kWh, 16 kWh per 100km
         EV_kWh_bus = number_of_cars * (distance_EV / 100) * 16
@@ -731,7 +730,7 @@ with tab7:
         ax1[1].bar("total", (st.session_state.HVAC_kWh + st.session_state.AC_kWh) / 1000)
         ax1[1].bar("total", el_kWh, bottom=(st.session_state.HVAC_kWh + st.session_state.AC_kWh) / 1000)
         ax1[1].bar("total", EV_kWh, bottom=(st.session_state.HVAC_kWh + st.session_state.AC_kWh) / 1000 + el_kWh)
-        ax1[1].bar("PV", PV_total)
+        ax1[1].bar("PV", st.session_state.PV_total)
         ax1[1].set_ylabel('Energy [kWh]')
         ax1[1].yaxis.tick_right()
         ax1[1].yaxis.set_label_position("right")
@@ -752,7 +751,7 @@ with tab7:
         ax2[1].bar("total", el_kWh, bottom=(st.session_state.energies_heating + st.session_state.energies_cooling) / 1000)
         ax2[1].bar("total", EV_kWh, bottom=(st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 + el_kWh)
         # in case of HVAC or AC show optimized values
-        ax2[1].bar("PV", PV_total)
+        ax2[1].bar("PV", st.session_state.PV_total)
         ax2[1].set_ylabel('Electric energy [kWh]')
         ax2[1].yaxis.tick_right()
         ax2[1].yaxis.set_label_position("right")
@@ -777,8 +776,6 @@ with tab7:
         #  flexibility        *
         # *********************
         flexibility_EV = st.session_state.EV_kWh_dom_flex + EV_kWh_bus
-
-        flexibility_HVAC = (st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 / len(use_case.list_of_times_HVAC)
         flexibility_battery = 0
         if use_case.bat_capacity>0:
             flexibility_battery = use_case.bat_capacity * use_case.bat_efficiency
@@ -789,14 +786,14 @@ with tab7:
         ax3[0].bar("Total energy", EV_kWh, bottom=(st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 + el_kWh, label='EV')
         ax3[0].legend()
         ax3[1].bar("Flexible energy", flexibility_EV, label='EV', color='wheat')
-        ax3[1].bar("Flexible energy", flexibility_HVAC, bottom=flexibility_EV, label='HVAC', color='tan')
-        ax3[1].bar("Flexible energy", flexibility_battery, bottom=flexibility_EV + flexibility_HVAC, label='Battery',
+        ax3[1].bar("Flexible energy", st.session_state.flexibility_HVAC, bottom=flexibility_EV, label='HVAC', color='tan')
+        ax3[1].bar("Flexible energy", flexibility_battery, bottom=flexibility_EV + st.session_state.flexibility_HVAC, label='Battery',
                    color='sienna')
         ax3[1].legend()
         ax3[0].set_ylabel('Electric energy [kWh]')
         fig3.suptitle("Flexibility")
         st.pyplot(fig3)
-        needed_bat = (st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 + el_kWh + EV_kWh - flexibility_EV - flexibility_HVAC - flexibility_battery
+        needed_bat = (st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 + el_kWh + EV_kWh - flexibility_EV - st.session_state.flexibility_HVAC - flexibility_battery
         # compenzate for return efficiency
         needed_bat /= use_case.bat_efficiency
         if needed_bat > 0:
@@ -807,7 +804,7 @@ with tab7:
         st.info("Run simulation to get results")
 
 with tab8:
-    if created_profiles_bool:
+    if st.session_state.created_profiles_bool:
         consumption = st.session_state.df_results['HeatingCoolingDemand_el'] + \
                       st.session_state.df_results['ElectricVehicle'] + \
                       st.session_state.df_results['BusinessBuildingProfile'] + \
@@ -833,5 +830,5 @@ with tab8:
             else:
                 st.write("*Power:*", f'{max_el:.2f}', "kWh")
 with tab9:
-    if created_profiles_bool:
+    if st.session_state.created_profiles_bool:
         st.write(st.session_state.df_results)
