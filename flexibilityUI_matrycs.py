@@ -572,7 +572,7 @@ else:
         use_case.EV_power = st.number_input("Charging power [kW]", min_value=0.0, max_value=None, value=3.7, key='EV_power') * 1000
         st.write("----------------------------------------------------------------------------------")
         st.write("**Households settings**")
-        penetration_EV = st.number_input("Penetration of EVs into housholds [%]", min_value=0, max_value=100, step=5,
+        penetration_EV = st.number_input("Penetration of EVs into households [%]", min_value=0, max_value=100, step=5,
                                                value=50,key='penetration_EV')
         commute_distance_EV = st.number_input("Average one-way commute distance done by EV [km]", min_value=0, max_value=None,
                                       value=25, key='commute_distance_EV', step=5,
