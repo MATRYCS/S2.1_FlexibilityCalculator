@@ -25,15 +25,26 @@ if "start" in st.session_state:
         if "key" in st.session_state:
             del st.session_state["key"]
 
+if "re-run" in st.session_state:
+    st.warning("session expired")
 
-def check():
-    url = 'https: // matrycs.epu.ntua.gr / iam / docs /  # /Tokens/post_token_introspect'
-    ##check refresh token from login
+def check_token():
+    """
+    Check if the token of the session is still valid
+    :return: True if OK, False need to login again
+    :rtype: bool
+    """
+    print("check state")
+    url = 'https://matrycs.epu.ntua.gr/security_enabler/token/introspect'
+    myobj = {
+        "token": st.session_state["access_token"],
+    }
+    x = requests.post(url, json=myobj)
+    return x.json()["active"]
 
 def password_entered():
     """Checks whether a password entered by the user is correct."""
-    #url = 'https://matrycs.epu.ntua.gr/iam/Users/post_user_authenticate'
-    url = 'https://matrycs.epu.ntua.gr/security_enabler/user/get/token'
+    url = 'https://matrycs.epu.ntua.gr/security_enabler/user/authenticate'
     myobj = {
         "username": st.session_state["username"],
         "password": st.session_state["password"],
@@ -44,8 +55,11 @@ def password_entered():
     if x.status_code == 200:
         st.session_state["key"] = True
         st.session_state["start"] = datetime.now()
+        st.session_state["access_token"] = x.json()['access_token']
         del st.session_state["password"]
         del st.session_state["username"]
+        if "re-run" in st.session_state:
+            del st.session_state["re-run"]
     else:
         st.warning("wrong username or password")
 
@@ -602,85 +616,91 @@ else:
     st.sidebar.write("PVs:")
     progress_bar_PV = st.sidebar.progress(0)
     if run_button:
-        building = st.session_state.number_buildings
-        st.session_state.AC_kWh = 0
-        st.session_state.HVAC_kWh = 0
-        st.session_state.energies_heating = 0
-        st.session_state.energies_cooling = 0
-        st.session_state.EV_kWh_dom_flex = 0
-        if len(st.session_state.df) >= building:
-            for i in range(1,building+1):
-                # load all parameters relevant for specific house
-                use_case.com_build_on = st.session_state.df.loc[i, "type_building"]
-                #print("type", use_case.com_build_on)
-                use_case.house_type=st.session_state.df.loc[i, "type_of_family"]
-                use_case.cooling_type = cool_types.index(st.session_state.df.loc[i,'cooling_type']) + 1
-                use_case.cooling_el_P = st.session_state.cooling_P
-                use_case.heating_type = heat_types.index(st.session_state.df.loc[i,'heating_type']) + 1
-                use_case.heating_el_P = st.session_state.heating_P
-                use_case.background_consumption = st.session_state.df.loc[i, "background_P"]
-                use_case.peak_consumption = st.session_state.df.loc[i, "peak_P"]
-                use_case.office_start_t = st.session_state.df.loc[i, "office_start"]*60
-                use_case.office_end_t = st.session_state.df.loc[i, "office_end"]*60
-                use_case.walls_area = st.session_state.df.loc[i, "walls"]
-                use_case.U_walls = st.session_state.df.loc[i, "U_walls"]
-                use_case.t_set = st.session_state.df.loc[i, "T_set"]
-                use_case.floor_area = st.session_state.df.loc[i, "floor_area"]
-                use_case.volume_building = st.session_state.df.loc[i, "volume_building"]
-                use_case.ach_vent = st.session_state.df.loc[i, "ach_vent"]
-                use_case.ventilation_efficiency = st.session_state.df.loc[i, "vent_eff"]
-                use_case.thermal_capacitance = st.session_state.df.loc[i, "thermal_cap"]
-                use_case.window_area = st.session_state.df.loc[i, "window_area"]
-                use_case.U_window = st.session_state.df.loc[i, "U_window"]
-                use_case.south_window_area = st.session_state.df.loc[i, "south_window_area"]
-                use_case.south_window_azimuth = st.session_state.df.loc[i, "south_window_azimuth"]
-                use_case.windows_tilt = st.session_state.df.loc[i, "windows_tilt"]
-                use_case.hasEV = random.random() <= penetration_EV/100.0
-                use_case.commute_distance_EV = commute_distance_EV
-                results_sim = use_case.calculation_BH()
-                if i == 1:
-                    st.session_state.df_results = results_sim
-                else:
-                    st.session_state.df_results = st.session_state.df_results + results_sim
-                st.session_state.HVAC_kWh = st.session_state.HVAC_kWh + use_case.HVAC_kWh
-                st.session_state.AC_kWh = st.session_state.AC_kWh + use_case.AC_kWh
-                st.session_state.energies_heating = st.session_state.energies_heating + use_case.energies_heating
-                st.session_state.energies_cooling = st.session_state.energies_cooling + use_case.energies_cooling
-                if i == 1:
-                    st.session_state.flexibility_HVAC = (st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 / len(use_case.list_of_times_HVAC)
-                else:
-                    st.session_state.flexibility_HVAC = st.session_state.flexibility_HVAC+(st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 / len(use_case.list_of_times_HVAC)
-                # calculate flexibility for EV of house
-                EV_kWh_dom = np.sum(np.abs(results_sim["ElectricVehicle"])) / 4000.0
-                if EV_kWh_dom > 1:
-                    EV_start_time = np.rint(use_case.EV_startTimes[0] / 15)
-                    EV_end_time = np.rint(use_case.EV_endTimes[0] / 15)
-                    st.session_state.EV_kWh_dom_flex = st.session_state.EV_kWh_dom_flex + (EV_end_time - EV_start_time) / 96 * EV_kWh_dom
-                progress_bar.progress(int(i * 100.0 / building))
-            st.session_state.df_results["Business_EV"] = use_case.business_EV_profile(number_of_cars,distance_EV).tolist()
-            st.session_state.created_profiles_bool = True
-            st.session_state.df_results["OutsideTemp"] = st.session_state.df_results["OutsideTemp"] / building
-            progress_bar.progress(100)
-        else:
-            st.sidebar.warning("All Houses/Buildings are not populated!")
-        if len(st.session_state.df_PV) >= st.session_state.number_PV:
-            PV = st.session_state.number_PV
-            if len(st.session_state.df_PV) >= PV:
-                for i in range(1, PV + 1):
-                    use_case.PV_nominal_power = st.session_state.df_PV.loc[i,'Pn']*1000
-                    use_case.tiltPV = st.session_state.df_PV.loc[i,'Inclination']
-                    use_case.azimuthPV = st.session_state.df_PV.loc[i,'Azimuth']
+        if check_token():
+            building = st.session_state.number_buildings
+            st.session_state.AC_kWh = 0
+            st.session_state.HVAC_kWh = 0
+            st.session_state.energies_heating = 0
+            st.session_state.energies_cooling = 0
+            st.session_state.EV_kWh_dom_flex = 0
+            if len(st.session_state.df) >= building:
+                for i in range(1,building+1):
+                    # load all parameters relevant for specific house
+                    use_case.com_build_on = st.session_state.df.loc[i, "type_building"]
+                    #print("type", use_case.com_build_on)
+                    use_case.house_type=st.session_state.df.loc[i, "type_of_family"]
+                    use_case.cooling_type = cool_types.index(st.session_state.df.loc[i,'cooling_type']) + 1
+                    use_case.cooling_el_P = st.session_state.cooling_P
+                    use_case.heating_type = heat_types.index(st.session_state.df.loc[i,'heating_type']) + 1
+                    use_case.heating_el_P = st.session_state.heating_P
+                    use_case.background_consumption = st.session_state.df.loc[i, "background_P"]
+                    use_case.peak_consumption = st.session_state.df.loc[i, "peak_P"]
+                    use_case.office_start_t = st.session_state.df.loc[i, "office_start"]*60
+                    use_case.office_end_t = st.session_state.df.loc[i, "office_end"]*60
+                    use_case.walls_area = st.session_state.df.loc[i, "walls"]
+                    use_case.U_walls = st.session_state.df.loc[i, "U_walls"]
+                    use_case.t_set = st.session_state.df.loc[i, "T_set"]
+                    use_case.floor_area = st.session_state.df.loc[i, "floor_area"]
+                    use_case.volume_building = st.session_state.df.loc[i, "volume_building"]
+                    use_case.ach_vent = st.session_state.df.loc[i, "ach_vent"]
+                    use_case.ventilation_efficiency = st.session_state.df.loc[i, "vent_eff"]
+                    use_case.thermal_capacitance = st.session_state.df.loc[i, "thermal_cap"]
+                    use_case.window_area = st.session_state.df.loc[i, "window_area"]
+                    use_case.U_window = st.session_state.df.loc[i, "U_window"]
+                    use_case.south_window_area = st.session_state.df.loc[i, "south_window_area"]
+                    use_case.south_window_azimuth = st.session_state.df.loc[i, "south_window_azimuth"]
+                    use_case.windows_tilt = st.session_state.df.loc[i, "windows_tilt"]
+                    use_case.hasEV = random.random() <= penetration_EV/100.0
+                    use_case.commute_distance_EV = commute_distance_EV
+                    results_sim = use_case.calculation_BH()
                     if i == 1:
-                        st.session_state.df_results["Photovoltaic"] = use_case.calculation_PV()
-                        st.session_state.PV_total = np.sum(np.abs(use_case.PVpower)) / 4000.0
+                        st.session_state.df_results = results_sim
                     else:
-                        st.session_state.df_results["Photovoltaic"] = st.session_state.df_results["Photovoltaic"] + use_case.calculation_PV()
-                        st.session_state.PV_total = st.session_state.PV_total + np.sum(np.abs(use_case.PVpower)) / 4000.0
-                    progress_bar_PV.progress(int(i * 100.0 / PV))
+                        st.session_state.df_results = st.session_state.df_results + results_sim
+                    st.session_state.HVAC_kWh = st.session_state.HVAC_kWh + use_case.HVAC_kWh
+                    st.session_state.AC_kWh = st.session_state.AC_kWh + use_case.AC_kWh
+                    st.session_state.energies_heating = st.session_state.energies_heating + use_case.energies_heating
+                    st.session_state.energies_cooling = st.session_state.energies_cooling + use_case.energies_cooling
+                    if i == 1:
+                        st.session_state.flexibility_HVAC = (st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 / len(use_case.list_of_times_HVAC)
+                    else:
+                        st.session_state.flexibility_HVAC = st.session_state.flexibility_HVAC+(st.session_state.energies_heating + st.session_state.energies_cooling) / 1000 / len(use_case.list_of_times_HVAC)
+                    # calculate flexibility for EV of house
+                    EV_kWh_dom = np.sum(np.abs(results_sim["ElectricVehicle"])) / 4000.0
+                    if EV_kWh_dom > 1:
+                        EV_start_time = np.rint(use_case.EV_startTimes[0] / 15)
+                        EV_end_time = np.rint(use_case.EV_endTimes[0] / 15)
+                        st.session_state.EV_kWh_dom_flex = st.session_state.EV_kWh_dom_flex + (EV_end_time - EV_start_time) / 96 * EV_kWh_dom
+                    progress_bar.progress(int(i * 100.0 / building))
+                st.session_state.df_results["Business_EV"] = use_case.business_EV_profile(number_of_cars,distance_EV).tolist()
+                st.session_state.created_profiles_bool = True
+                st.session_state.df_results["OutsideTemp"] = st.session_state.df_results["OutsideTemp"] / building
+                progress_bar.progress(100)
+            else:
+                st.sidebar.warning("All Houses/Buildings are not populated!")
+            if len(st.session_state.df_PV) >= st.session_state.number_PV:
+                PV = st.session_state.number_PV
+                if len(st.session_state.df_PV) >= PV:
+                    for i in range(1, PV + 1):
+                        use_case.PV_nominal_power = st.session_state.df_PV.loc[i,'Pn']*1000
+                        use_case.tiltPV = st.session_state.df_PV.loc[i,'Inclination']
+                        use_case.azimuthPV = st.session_state.df_PV.loc[i,'Azimuth']
+                        if i == 1:
+                            st.session_state.df_results["Photovoltaic"] = use_case.calculation_PV()
+                            st.session_state.PV_total = np.sum(np.abs(use_case.PVpower)) / 4000.0
+                        else:
+                            st.session_state.df_results["Photovoltaic"] = st.session_state.df_results["Photovoltaic"] + use_case.calculation_PV()
+                            st.session_state.PV_total = st.session_state.PV_total + np.sum(np.abs(use_case.PVpower)) / 4000.0
+                        progress_bar_PV.progress(int(i * 100.0 / PV))
 
-            progress_bar_PV.progress(100)
+                progress_bar_PV.progress(100)
+            else:
+                st.sidebar.warning("All PV systems are not defined!")
         else:
-            st.sidebar.warning("All PV systems are not defined!")
+            if "key" in st.session_state:
+                del st.session_state["key"]
+            st.session_state["re-run"] = 1
+            st.experimental_rerun()
     with tab6:
         if st.session_state.created_profiles_bool:
             dates = np.arange(0, 24, 0.25)
