@@ -226,6 +226,8 @@ else:
         st.session_state.south_window_area = 10
         st.session_state.south_window_azimuth = 0
         st.session_state.windows_tilt = 90
+
+    if 'EV_capacity' not in st.session_state:
         st.session_state.EV_capacity = 40.00
         st.session_state.EV_power = 3.7
         st.session_state.penetration_EV = 50
