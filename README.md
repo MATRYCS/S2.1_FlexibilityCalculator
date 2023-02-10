@@ -1,5 +1,10 @@
 Flexibility Calculator
 ==============
+```diff
+! This is an archived version of the S2.1 service. 
+! Any future enhancements beyond the MATRYCS project will be made in 
+```
+[https://gitlab.com/comsensus/flexibilitycalculator](https://gitlab.com/comsensus/flexibilitycalculator)
 
 This tool calculates the flexibility potential of a single household, a commercial building, or a zone consisting of 
 multiple households and/or commercial buildings. The parameters that are taken into account in the calculation of the 
